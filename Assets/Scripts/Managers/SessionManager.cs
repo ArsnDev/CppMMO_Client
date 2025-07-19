@@ -36,7 +36,6 @@ namespace SimpleMMO.Managers
 
         [Header("Session Data")]
         [SerializeField] private string sessionTicket;
-        [SerializeField] private bool isLoggedIn;
 
         public string SessionTicket
         {
@@ -49,15 +48,13 @@ namespace SimpleMMO.Managers
         public void SaveSession(string ticket)
         {
             sessionTicket = ticket;
-            isLoggedIn = true;
-            Debug.Log($"Session saved: {ticket.Substring(0, 8)}...");
+            Debug.Log($"Session saved: {(ticket.Length > 8 ? ticket.Substring(0, 8) + "..." : ticket)}");
         }
 
         public void ClearSession()
         {
             sessionTicket = string.Empty;
-            isLoggedIn = false;
-            Debug.Log("Session cleared.");
+            Debug.Log("Session cleared");
         }
 
         public bool ValidateSession()
