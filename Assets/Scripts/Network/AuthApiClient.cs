@@ -76,8 +76,13 @@ namespace SimpleMMO.Network
     [Serializable]
     public class VerifyRequest
     {
-        public string sessionTicket;
-        public ulong playerId;
+        public string sessionTicket { get; set; }
+        public ulong playerId { get; set; }
+        
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(sessionTicket) && playerId > 0;
+        }
     }
 
     [Serializable]
@@ -185,19 +190,13 @@ namespace SimpleMMO.Network
 
         public void VerifyPlayer(string sessionTicket, ulong playerId, Action<VerifyResponse> onSuccess, Action<string> onError)
         {
-            if (string.IsNullOrWhiteSpace(sessionTicket))
-            {
-                onError?.Invoke("Session ticket is required");
-                return;
-            }
-            
-            if (playerId == 0)
-            {
-                onError?.Invoke("Valid player ID is required");
-                return;
-            }
-            
             var request = new VerifyRequest { sessionTicket = sessionTicket, playerId = playerId };
+            if (!request.IsValid())
+            {
+                onError?.Invoke("Session ticket is required and player ID must be greater than 0");
+                return;
+            }
+            
             StartCoroutine(SendPostRequest("verify", request, onSuccess, onError));
         }
 
