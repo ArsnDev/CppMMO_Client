@@ -18,10 +18,10 @@ namespace SimpleMMO.Network
         private TcpClient _client;
         private NetworkStream _stream;
         private Thread _receiveThread;
-        private bool _isConnected = false;
+        private volatile bool _isConnected = false;
         private ConcurrentQueue<byte[]> incomingPackets = new ConcurrentQueue<byte[]>();
 
-        private uint sequenceNumber = 0;
+        private int sequenceNumber = 0;
 
         public event Action OnConnected;
         public event Action OnDisconnected;
@@ -34,30 +34,42 @@ namespace SimpleMMO.Network
         public event Action<S_Chat> OnChatReceived;
 
         private static GameServerClient _instance;
+        private static readonly object _lock = new object();
+        
         public static GameServerClient Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    GameObject go = new GameObject("GameServerClient");
-                    _instance = go.AddComponent<GameServerClient>();
-                    DontDestroyOnLoad(go);
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            GameObject go = new GameObject("GameServerClient");
+                            _instance = go.AddComponent<GameServerClient>();
+                            DontDestroyOnLoad(go);
+                        }
+                    }
                 }
                 return _instance;
             }
         }
 
-        public void Awake()
+        void Awake()
         {
-            if (_instance == null)
+            lock (_lock)
             {
-                _instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else if (_instance != this)
-            {
-                Destroy(gameObject);
+                if (_instance == null)
+                {
+                    _instance = this;
+                    DontDestroyOnLoad(gameObject);
+                }
+                else if (_instance != this)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
             }
         }
 
@@ -106,7 +118,8 @@ namespace SimpleMMO.Network
             {
                 if (_receiveThread != null && _receiveThread.IsAlive)
                 {
-                    _receiveThread.Join(1000); // 1초 대기 후 종료
+                    _receiveThread.Interrupt();
+                    _receiveThread.Join(1000); // Wait up to 1 second for thread to finish
                 }
                 _stream?.Close();
                 _client?.Close();
@@ -134,7 +147,7 @@ namespace SimpleMMO.Network
 
         public void SendPlayerInput(byte inputFlags, Vector3 mousePosition)
         {
-            var packet = PacketExtensions.CreatePlayerInputPacket(inputFlags, mousePosition, ++sequenceNumber);
+            var packet = PacketExtensions.CreatePlayerInputPacket(inputFlags, mousePosition, (uint)Interlocked.Increment(ref sequenceNumber));
             SendPacket(packet);
         }
 
@@ -230,13 +243,15 @@ namespace SimpleMMO.Network
             {
                 try
                 {
-                    byte[] packetData = incomingPackets.TryDequeue(out var packet) ? packet : null;
-                    ProcessPacket(packetData);
+                    if (incomingPackets.TryDequeue(out var packetData))
+                    {
+                        ProcessPacket(packetData);
+                    }
                 }
                 catch (Exception ex)
                 {
                     Debug.LogError($"Error processing incoming packet: {ex.Message}");
-                    return;
+                    // Continue processing remaining packets instead of returning
                 }
             }
         }
@@ -301,6 +316,6 @@ namespace SimpleMMO.Network
         }
 
         public bool IsConnected => _isConnected;
-        public uint CurrentSequenceNumber => sequenceNumber;
+        public uint CurrentSequenceNumber => (uint)sequenceNumber;
     }
 }

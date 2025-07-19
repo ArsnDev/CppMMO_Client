@@ -76,15 +76,23 @@ namespace SimpleMMO.Network
     public class AuthApiClient : MonoBehaviour
     {
         private static AuthApiClient _instance;
+        private static readonly object _lock = new object();
+        
         public static AuthApiClient Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    GameObject go = new GameObject("AuthApiClient");
-                    _instance = go.AddComponent<AuthApiClient>();
-                    DontDestroyOnLoad(go);
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            GameObject go = new GameObject("AuthApiClient");
+                            _instance = go.AddComponent<AuthApiClient>();
+                            DontDestroyOnLoad(go);
+                        }
+                    }
                 }
                 return _instance;
             }
@@ -92,14 +100,18 @@ namespace SimpleMMO.Network
 
         void Awake()
         {
-            if (_instance == null)
+            lock (_lock)
             {
-                _instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else if (_instance != this)
-            {
-                Destroy(gameObject);
+                if (_instance == null)
+                {
+                    _instance = this;
+                    DontDestroyOnLoad(gameObject);
+                }
+                else if (_instance != this)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
             }
         }
 
@@ -132,6 +144,41 @@ namespace SimpleMMO.Network
             StartCoroutine(SendPostRequest("verify", request, onSuccess, onError));
         }
 
+        private IEnumerator SendRequest<TResponse>(UnityWebRequest webRequest, string endpoint, 
+            Action<TResponse> onSuccess, Action<string> onError)
+        {
+            Debug.Log($"AuthAPI: Sending {webRequest.method} {endpoint} request to {webRequest.url}");
+            
+            yield return webRequest.SendWebRequest();
+            
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    string responseText = webRequest.downloadHandler.text;
+                    Debug.Log($"AuthAPI: {endpoint} response: {responseText}");
+                    
+                    TResponse response = JsonConvert.DeserializeObject<TResponse>(responseText);
+                    onSuccess?.Invoke(response);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"AuthAPI: Failed to parse {endpoint} response: {e.Message}");
+                    onError?.Invoke($"Failed to parse response: {e.Message}");
+                }
+            }
+            else
+            {
+                string errorMessage = $"HTTP {webRequest.responseCode}: {webRequest.error}";
+                if (!string.IsNullOrEmpty(webRequest.downloadHandler.text))
+                {
+                    errorMessage += $"\n{webRequest.downloadHandler.text}";
+                }
+                Debug.LogError($"AuthAPI: {endpoint} failed: {errorMessage}");
+                onError?.Invoke(errorMessage);
+            }
+        }
+
         private IEnumerator SendPostRequest<TRequest, TResponse>(string endpoint, TRequest requestData, Action<TResponse> onSuccess, Action<string> onError)
         {
             string url = $"{ServerConfig.AuthServerUrl}/api/auth/{endpoint}";
@@ -144,36 +191,7 @@ namespace SimpleMMO.Network
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
 
-                Debug.Log($"AuthAPI: Sending {endpoint} request to {url}");
-
-                yield return webRequest.SendWebRequest();
-
-                if (webRequest.result == UnityWebRequest.Result.Success)
-                {
-                    try
-                    {
-                        string responseText = webRequest.downloadHandler.text;
-                        Debug.Log($"AuthAPI: {endpoint} response: {responseText}");
-                        
-                        TResponse response = JsonConvert.DeserializeObject<TResponse>(responseText);
-                        onSuccess?.Invoke(response);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"AuthAPI: Failed to parse {endpoint} response: {e.Message}");
-                        onError?.Invoke($"Failed to parse response: {e.Message}");
-                    }
-                }
-                else
-                {
-                    string errorMessage = $"HTTP {webRequest.responseCode}: {webRequest.error}";
-                    if (!string.IsNullOrEmpty(webRequest.downloadHandler.text))
-                    {
-                        errorMessage += $"\n{webRequest.downloadHandler.text}";
-                    }
-                    Debug.LogError($"AuthAPI: {endpoint} failed: {errorMessage}");
-                    onError?.Invoke(errorMessage);
-                }
+                yield return StartCoroutine(SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError));
             }
         }
 
@@ -190,36 +208,7 @@ namespace SimpleMMO.Network
                 webRequest.SetRequestHeader("Content-Type", "application/json");
                 webRequest.SetRequestHeader("sessionTicket", sessionTicket);
 
-                Debug.Log($"AuthAPI: Sending {endpoint} request to {url} with session ticket");
-
-                yield return webRequest.SendWebRequest();
-
-                if (webRequest.result == UnityWebRequest.Result.Success)
-                {
-                    try
-                    {
-                        string responseText = webRequest.downloadHandler.text;
-                        Debug.Log($"AuthAPI: {endpoint} response: {responseText}");
-                        
-                        TResponse response = JsonConvert.DeserializeObject<TResponse>(responseText);
-                        onSuccess?.Invoke(response);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"AuthAPI: Failed to parse {endpoint} response: {e.Message}");
-                        onError?.Invoke($"Failed to parse response: {e.Message}");
-                    }
-                }
-                else
-                {
-                    string errorMessage = $"HTTP {webRequest.responseCode}: {webRequest.error}";
-                    if (!string.IsNullOrEmpty(webRequest.downloadHandler.text))
-                    {
-                        errorMessage += $"\n{webRequest.downloadHandler.text}";
-                    }
-                    Debug.LogError($"AuthAPI: {endpoint} failed: {errorMessage}");
-                    onError?.Invoke(errorMessage);
-                }
+                yield return StartCoroutine(SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError));
             }
         }
 
@@ -231,36 +220,7 @@ namespace SimpleMMO.Network
             {
                 webRequest.SetRequestHeader("sessionTicket", sessionTicket);
 
-                Debug.Log($"AuthAPI: Sending GET {endpoint} request to {url}");
-
-                yield return webRequest.SendWebRequest();
-
-                if (webRequest.result == UnityWebRequest.Result.Success)
-                {
-                    try
-                    {
-                        string responseText = webRequest.downloadHandler.text;
-                        Debug.Log($"AuthAPI: {endpoint} response: {responseText}");
-                        
-                        TResponse response = JsonConvert.DeserializeObject<TResponse>(responseText);
-                        onSuccess?.Invoke(response);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"AuthAPI: Failed to parse {endpoint} response: {e.Message}");
-                        onError?.Invoke($"Failed to parse response: {e.Message}");
-                    }
-                }
-                else
-                {
-                    string errorMessage = $"HTTP {webRequest.responseCode}: {webRequest.error}";
-                    if (!string.IsNullOrEmpty(webRequest.downloadHandler.text))
-                    {
-                        errorMessage += $"\n{webRequest.downloadHandler.text}";
-                    }
-                    Debug.LogError($"AuthAPI: {endpoint} failed: {errorMessage}");
-                    onError?.Invoke(errorMessage);
-                }
+                yield return StartCoroutine(SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError));
             }
         }
     }
