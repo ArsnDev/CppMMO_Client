@@ -7,15 +7,23 @@ namespace SimpleMMO.Managers
     public class  SessionManager : MonoBehaviour
     {
         private static SessionManager _instance;
+        private static readonly object _lock = new object();
+        
         public static SessionManager Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    GameObject go = new GameObject("SessionManager");
-                    _instance = go.AddComponent<SessionManager>();
-                    DontDestroyOnLoad(go);
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            GameObject go = new GameObject("SessionManager");
+                            _instance = go.AddComponent<SessionManager>();
+                            DontDestroyOnLoad(go);
+                        }
+                    }
                 }
                 return _instance;
             }
@@ -23,14 +31,18 @@ namespace SimpleMMO.Managers
 
         void Awake()
         {
-            if (_instance == null)
+            lock (_lock)
             {
-                _instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else if (_instance != this)
-            {
-                Destroy(gameObject);
+                if (_instance == null)
+                {
+                    _instance = this;
+                    DontDestroyOnLoad(gameObject);
+                }
+                else if (_instance != this)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
             }
         }
 
