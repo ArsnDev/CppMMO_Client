@@ -27,29 +27,29 @@ namespace SimpleMMO.Network
     [Serializable]
     public class LoginResponse
     {
-        public bool success;
-        public string message;
-        public string sessionTicket;
-        public PlayerInfoDto playerInfo;
+        public bool success { get; set; }
+        public string message { get; set; }
+        public string sessionTicket { get; set; }
+        public PlayerInfoDto playerInfo { get; set; }
     }
 
     [Serializable]
     public class PlayerInfoDto
     {
-        public ulong playerId;
-        public string name;
-        public float posX;
-        public float posY;
-        public int hp;
-        public int maxHp;
+        public ulong playerId { get; set; }
+        public string name { get; set; }
+        public float posX { get; set; }
+        public float posY { get; set; }
+        public int hp { get; set; }
+        public int maxHp { get; set; }
     }
 
     [Serializable]
     public class CharacterListResponse
     {
-        public bool success;
-        public List<PlayerInfoDto> characters;
-        public string message;
+        public bool success { get; set; }
+        public List<PlayerInfoDto> characters { get; set; }
+        public string message { get; set; }
     }
 
     [Serializable]
@@ -68,9 +68,9 @@ namespace SimpleMMO.Network
     [Serializable]
     public class CharacterCreateResponse
     {
-        public bool success;
-        public PlayerInfoDto character;
-        public string message;
+        public bool success { get; set; }
+        public PlayerInfoDto character { get; set; }
+        public string message { get; set; }
     }
 
     [Serializable]
@@ -88,9 +88,9 @@ namespace SimpleMMO.Network
     [Serializable]
     public class VerifyResponse
     {
-        public bool success;
-        public PlayerInfoDto playerInfo;
-        public string message;
+        public bool success { get; set; }
+        public PlayerInfoDto playerInfo { get; set; }
+        public string message { get; set; }
     }
 
     public class AuthApiClient : MonoBehaviour
@@ -244,7 +244,17 @@ namespace SimpleMMO.Network
             }
             
             string url = $"{ServerConfig.AuthServerUrl}/api/auth/{endpoint}";
-            string jsonData = JsonConvert.SerializeObject(requestData);
+            
+            string jsonData;
+            try
+            {
+                jsonData = JsonConvert.SerializeObject(requestData);
+            }
+            catch (Exception e)
+            {
+                onError?.Invoke($"Failed to serialize request data: {e.Message}");
+                yield break;
+            }
 
             using (UnityWebRequest webRequest = new UnityWebRequest(url, "POST"))
             {
@@ -266,7 +276,17 @@ namespace SimpleMMO.Network
             }
             
             string url = $"{ServerConfig.AuthServerUrl}/api/auth/{endpoint}";
-            string jsonData = JsonConvert.SerializeObject(requestData);
+            
+            string jsonData;
+            try
+            {
+                jsonData = JsonConvert.SerializeObject(requestData);
+            }
+            catch (Exception e)
+            {
+                onError?.Invoke($"Failed to serialize request data: {e.Message}");
+                yield break;
+            }
 
             using (UnityWebRequest webRequest = new UnityWebRequest(url, "POST"))
             {
