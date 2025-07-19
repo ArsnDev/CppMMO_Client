@@ -254,7 +254,7 @@ namespace SimpleMMO.Network
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
 
-                yield return StartCoroutine(SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError));
+                yield return SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError);
             }
         }
 
@@ -277,7 +277,7 @@ namespace SimpleMMO.Network
                 webRequest.SetRequestHeader("Content-Type", "application/json");
                 webRequest.SetRequestHeader("sessionTicket", sessionTicket);
 
-                yield return StartCoroutine(SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError));
+                yield return SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError);
             }
         }
 
@@ -295,7 +295,7 @@ namespace SimpleMMO.Network
             {
                 webRequest.SetRequestHeader("sessionTicket", sessionTicket);
 
-                yield return StartCoroutine(SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError));
+                yield return SendRequest<TResponse>(webRequest, endpoint, onSuccess, onError);
             }
         }
     }
