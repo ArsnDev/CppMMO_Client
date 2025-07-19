@@ -32,6 +32,8 @@ namespace SimpleMMO.Network
         public event Action<S_PlayerJoined> OnPlayerJoined;
         public event Action<S_PlayerLeft> OnPlayerLeft;
         public event Action<S_Chat> OnChatReceived;
+        public event Action<S_StateCorrection> OnStateCorrection;
+        public event Action<S_GameTick> OnGameTick;
 
         private static GameServerClient _instance;
         private static readonly object _lock = new object();
@@ -119,7 +121,7 @@ namespace SimpleMMO.Network
                 if (_receiveThread != null && _receiveThread.IsAlive)
                 {
                     _receiveThread.Interrupt();
-                    _receiveThread.Join(1000); // Wait up to 1 second for thread to finish
+                    _receiveThread.Join(1000);
                 }
                 _stream?.Close();
                 _client?.Close();
@@ -167,11 +169,9 @@ namespace SimpleMMO.Network
 
             try
             {
-                // 패킷 크기를 4바이트로 전송 (little-endian)
                 byte[] sizeBytes = BitConverter.GetBytes(packetData.Length);
                 _stream.Write(sizeBytes, 0, 4);
                 
-                // 패킷 데이터 전송
                 _stream.Write(packetData, 0, packetData.Length);
                 _stream.Flush();
                 
@@ -251,7 +251,6 @@ namespace SimpleMMO.Network
                 catch (Exception ex)
                 {
                     Debug.LogError($"Error processing incoming packet: {ex.Message}");
-                    // Continue processing remaining packets instead of returning
                 }
             }
         }
@@ -290,6 +289,12 @@ namespace SimpleMMO.Network
                 case PacketId.S_Chat:
                     OnChatReceived?.Invoke(packet.DataAsS_Chat());
                     break;
+                case PacketId.S_StateCorrection:
+                    OnStateCorrection?.Invoke(packet.DataAsS_StateCorrection());
+                    break;
+                case PacketId.S_GameTick:
+                    OnGameTick?.Invoke(packet.DataAsS_GameTick());
+                    break;
                 default:
                     Debug.LogWarning($"Unhandled packet type: {packetId}");
                     break;
@@ -303,14 +308,12 @@ namespace SimpleMMO.Network
 
         void OnApplicationPause(bool pauseStatus)
         {
-            // Unity Editor에서는 일시정지로 연결을 끊지 않음
             if (pauseStatus && !Application.isEditor)
                 Disconnect();
         }
 
         void OnApplicationFocus(bool hasFocus)
         {
-            // Unity Editor에서는 포커스 변경으로 연결을 끊지 않음
             if (!hasFocus && !Application.isEditor)
                 Disconnect();
         }
