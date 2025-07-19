@@ -12,8 +12,16 @@ namespace SimpleMMO.Network
     [Serializable]
     public class LoginRequest
     {
-        public string username;
-        public string password;
+        public string username { get; set; }
+        public string password { get; set; }
+        
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(username) && 
+                   !string.IsNullOrWhiteSpace(password) &&
+                   username.Length >= 3 && 
+                   password.Length >= 6;
+        }
     }
 
     [Serializable]
@@ -47,7 +55,14 @@ namespace SimpleMMO.Network
     [Serializable]
     public class CharacterCreateRequest
     {
-        public string characterName;
+        public string characterName { get; set; }
+        
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(characterName) && 
+                   characterName.Length >= 2 && 
+                   characterName.Length <= 20;
+        }
     }
 
     [Serializable]
@@ -118,28 +133,70 @@ namespace SimpleMMO.Network
         public void Register(string username, string password, Action<LoginResponse> onSuccess, Action<string> onError)
         {
             var request = new LoginRequest { username = username, password = password };
+            if (!request.IsValid())
+            {
+                onError?.Invoke("Username must be at least 3 characters and password at least 6 characters");
+                return;
+            }
+            
             StartCoroutine(SendPostRequest("register", request, onSuccess, onError));
         }
 
         public void Login(string username, string password, Action<LoginResponse> onSuccess, Action<string> onError)
         {
             var request = new LoginRequest { username = username, password = password };
+            if (!request.IsValid())
+            {
+                onError?.Invoke("Username must be at least 3 characters and password at least 6 characters");
+                return;
+            }
+            
             StartCoroutine(SendPostRequest("login", request, onSuccess, onError));
         }
 
         public void GetCharacters(string sessionTicket, Action<CharacterListResponse> onSuccess, Action<string> onError)
         {
+            if (string.IsNullOrWhiteSpace(sessionTicket))
+            {
+                onError?.Invoke("Session ticket is required");
+                return;
+            }
+            
             StartCoroutine(SendGetRequest("characters", sessionTicket, onSuccess, onError));
         }
 
         public void CreateCharacter(string sessionTicket, string characterName, Action<CharacterCreateResponse> onSuccess, Action<string> onError)
         {
+            if (string.IsNullOrWhiteSpace(sessionTicket))
+            {
+                onError?.Invoke("Session ticket is required");
+                return;
+            }
+            
             var request = new CharacterCreateRequest { characterName = characterName };
+            if (!request.IsValid())
+            {
+                onError?.Invoke("Character name must be 2-20 characters long");
+                return;
+            }
+            
             StartCoroutine(SendPostRequestWithHeader("characters", sessionTicket, request, onSuccess, onError));
         }
 
         public void VerifyPlayer(string sessionTicket, ulong playerId, Action<VerifyResponse> onSuccess, Action<string> onError)
         {
+            if (string.IsNullOrWhiteSpace(sessionTicket))
+            {
+                onError?.Invoke("Session ticket is required");
+                return;
+            }
+            
+            if (playerId == 0)
+            {
+                onError?.Invoke("Valid player ID is required");
+                return;
+            }
+            
             var request = new VerifyRequest { sessionTicket = sessionTicket, playerId = playerId };
             StartCoroutine(SendPostRequest("verify", request, onSuccess, onError));
         }
@@ -181,6 +238,12 @@ namespace SimpleMMO.Network
 
         private IEnumerator SendPostRequest<TRequest, TResponse>(string endpoint, TRequest requestData, Action<TResponse> onSuccess, Action<string> onError)
         {
+            if (string.IsNullOrWhiteSpace(ServerConfig.AuthServerUrl))
+            {
+                onError?.Invoke("Auth server URL not configured");
+                yield break;
+            }
+            
             string url = $"{ServerConfig.AuthServerUrl}/api/auth/{endpoint}";
             string jsonData = JsonConvert.SerializeObject(requestData);
 
@@ -197,6 +260,12 @@ namespace SimpleMMO.Network
 
         private IEnumerator SendPostRequestWithHeader<TRequest, TResponse>(string endpoint, string sessionTicket, TRequest requestData, Action<TResponse> onSuccess, Action<string> onError)
         {
+            if (string.IsNullOrWhiteSpace(ServerConfig.AuthServerUrl))
+            {
+                onError?.Invoke("Auth server URL not configured");
+                yield break;
+            }
+            
             string url = $"{ServerConfig.AuthServerUrl}/api/auth/{endpoint}";
             string jsonData = JsonConvert.SerializeObject(requestData);
 
@@ -214,6 +283,12 @@ namespace SimpleMMO.Network
 
         private IEnumerator SendGetRequest<TResponse>(string endpoint, string sessionTicket, Action<TResponse> onSuccess, Action<string> onError)
         {
+            if (string.IsNullOrWhiteSpace(ServerConfig.AuthServerUrl))
+            {
+                onError?.Invoke("Auth server URL not configured");
+                yield break;
+            }
+            
             string url = $"{ServerConfig.AuthServerUrl}/api/auth/{endpoint}";
 
             using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
