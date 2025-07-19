@@ -72,9 +72,13 @@ namespace SimpleMMO.Managers
         {
         }
 
-        private void OnApplicationFocus(bool focus)
+        void OnApplicationFocus(bool hasFocus)
         {
+            // 포커스 잃을 때 세션 검증
+            if (hasFocus && IsLoggedIn)
+            {
+                ValidateSession();
+            }
         }
-    }
     }
 }
