@@ -13,19 +13,34 @@ namespace SimpleMMO.Managers
         {
             get
             {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                    {
+                        Debug.LogError("PlayerDataManager: Instance not initialized. Call Initialize() from main thread first.");
+                    }
+                    return _instance;
+                }
+            }
+        }
+        
+        public static void Initialize()
+        {
+            if (_instance != null)
+            {
+                Debug.LogWarning("PlayerDataManager: Already initialized");
+                return;
+            }
+            
+            lock (_lock)
+            {
                 if (_instance == null)
                 {
-                    lock (_lock)
-                    {
-                        if (_instance == null)
-                        {
-                            GameObject go = new GameObject("PlayerDataManager");
-                            _instance = go.AddComponent<PlayerDataManager>();
-                            DontDestroyOnLoad(go);
-                        }
-                    }
+                    GameObject go = new GameObject("PlayerDataManager");
+                    _instance = go.AddComponent<PlayerDataManager>();
+                    DontDestroyOnLoad(go);
+                    Debug.Log("PlayerDataManager: Initialized successfully");
                 }
-                return _instance;
             }
         }
 
@@ -40,6 +55,7 @@ namespace SimpleMMO.Managers
                 }
                 else if (_instance != this)
                 {
+                    Debug.LogWarning("PlayerDataManager: Duplicate instance detected, destroying");
                     Destroy(gameObject);
                     return;
                 }
@@ -184,11 +200,6 @@ namespace SimpleMMO.Managers
             return MAX_CHARACTER_SLOTS - GetCharacterCount();
         }
 
-        public PlayerInfoDto GetMyPlayer()
-        {
-            return selectedCharacter;
-        }
-
         public PlayerInfoDto GetSelectedCharacter()
         {
             return selectedCharacter;
@@ -255,7 +266,8 @@ namespace SimpleMMO.Managers
                    character.playerId > 0 &&
                    !string.IsNullOrWhiteSpace(character.name) &&
                    character.hp >= 0 &&
-                   character.maxHp > 0;
+                   character.maxHp > 0 &&
+                   character.hp <= character.maxHp;
         }
 
         public List<PlayerInfoDto> GetAllCharacters()
