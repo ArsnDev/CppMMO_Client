@@ -73,16 +73,17 @@ namespace SimpleMMO.UI
 
         private void SetupEventListeners()
         {
-            for (int i = 0; i < characterSlotButtons.Length; i++)
+            for (int i = 0; i < maxCharacterSlots; i++)
             {
                 int slotIndex = i;
-                if (characterSlotButtons[i] != null)
+                
+                if (i < characterSlotButtons?.Length && characterSlotButtons[i] != null)
                     characterSlotButtons[i].onClick.AddListener(() => OnCharacterSlotClicked(slotIndex));
                 
-                if (createCharacterButtons[i] != null)
+                if (i < createCharacterButtons?.Length && createCharacterButtons[i] != null)
                     createCharacterButtons[i].onClick.AddListener(() => OnCreateCharacterClicked(slotIndex));
                 
-                if (deleteCharacterButtons[i] != null)
+                if (i < deleteCharacterButtons?.Length && deleteCharacterButtons[i] != null)
                     deleteCharacterButtons[i].onClick.AddListener(() => OnDeleteCharacterClicked(slotIndex));
             }
 
@@ -99,6 +100,18 @@ namespace SimpleMMO.UI
                 cancelCreateButton.onClick.AddListener(OnCancelCreateClicked);
         }
 
+        private bool ValidateSession()
+        {
+            string sessionTicket = SessionManager.Instance.SessionTicket;
+            if (string.IsNullOrEmpty(sessionTicket))
+            {
+                SetStatusText("No active session. Please login again.", Color.red);
+                OnBackButtonClicked();
+                return false;
+            }
+            return true;
+        }
+
         private void LoadCharacterList()
         {
             SetLoadingState(true);
@@ -106,13 +119,9 @@ namespace SimpleMMO.UI
             
             Debug.Log("CharacterSelectionPanel: Loading character list");
             
+            if (!ValidateSession()) return;
+            
             string sessionTicket = SessionManager.Instance.SessionTicket;
-            if (string.IsNullOrEmpty(sessionTicket))
-            {
-                SetStatusText("No active session. Please login again.", Color.red);
-                OnBackButtonClicked();
-                return;
-            }
             AuthApiClient.Instance.GetCharacters(sessionTicket, OnCharacterListSuccess, OnCharacterListFailure);
         }
 
@@ -144,31 +153,31 @@ namespace SimpleMMO.UI
 
         private void UpdateCharacterSlots()
         {
-            for (int i = 0; i < characterSlotButtons.Length; i++)
+            for (int i = 0; i < maxCharacterSlots; i++)
             {
                 var character = PlayerDataManager.Instance.GetCharacterAtSlot(i);
                 bool hasCharacter = character != null;
 
-                if (characterNameTexts[i] != null)
+                if (i < characterNameTexts?.Length && characterNameTexts[i] != null)
                 {
                     characterNameTexts[i].gameObject.SetActive(hasCharacter);
                     if (hasCharacter) characterNameTexts[i].text = character.name;
                 }
 
-                if (characterInfoTexts[i] != null)
+                if (i < characterInfoTexts?.Length && characterInfoTexts[i] != null)
                 {
                     characterInfoTexts[i].gameObject.SetActive(hasCharacter);
                     if (hasCharacter) 
                         characterInfoTexts[i].text = $"HP: {character.hp}/{character.maxHp}\nPos: ({character.posX.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}, {character.posY.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)})";
                 }
 
-                if (createCharacterButtons[i] != null)
+                if (i < createCharacterButtons?.Length && createCharacterButtons[i] != null)
                     createCharacterButtons[i].gameObject.SetActive(!hasCharacter);
 
-                if (deleteCharacterButtons[i] != null)
+                if (i < deleteCharacterButtons?.Length && deleteCharacterButtons[i] != null)
                     deleteCharacterButtons[i].gameObject.SetActive(hasCharacter);
 
-                if (characterSlotButtons[i] != null)
+                if (i < characterSlotButtons?.Length && characterSlotButtons[i] != null)
                     characterSlotButtons[i].interactable = hasCharacter;
             }
 
@@ -227,7 +236,7 @@ namespace SimpleMMO.UI
             
             Debug.Log($"CharacterSelectionPanel: Entering game with character {selectedCharacter.name}");
             
-            Invoke(nameof(LoadGameScene), 1.0f);
+            StartCoroutine(LoadGameSceneAfterDelay());
         }
 
         private void OnBackButtonClicked()
@@ -281,13 +290,9 @@ namespace SimpleMMO.UI
             
             Debug.Log($"CharacterSelectionPanel: Creating character '{characterName}' in slot {creatingSlotIndex}");
             
+            if (!ValidateSession()) return;
+            
             string sessionTicket = SessionManager.Instance.SessionTicket;
-            if (string.IsNullOrEmpty(sessionTicket))
-            {
-                SetStatusText("No active session. Please login again.", Color.red);
-                OnBackButtonClicked();
-                return;
-            }
             AuthApiClient.Instance.CreateCharacter(sessionTicket, characterName, OnCharacterCreateSuccess, OnCharacterCreateFailure);
         }
 
@@ -324,6 +329,12 @@ namespace SimpleMMO.UI
             Debug.LogError($"CharacterSelectionPanel: Create failed - {error}");
             
             creatingSlotIndex = -1;
+        }
+
+        private System.Collections.IEnumerator LoadGameSceneAfterDelay()
+        {
+            yield return new WaitForSeconds(1.0f);
+            LoadGameScene();
         }
 
         private void LoadGameScene()
@@ -370,11 +381,14 @@ namespace SimpleMMO.UI
         {
             // Note: Using RemoveAllListeners() for simplicity with lambda functions
             // In a larger project, consider storing Action references for specific RemoveListener calls
-            for (int i = 0; i < characterSlotButtons.Length; i++)
+            for (int i = 0; i < maxCharacterSlots; i++)
             {
-                if (characterSlotButtons[i] != null) characterSlotButtons[i].onClick.RemoveAllListeners();
-                if (createCharacterButtons[i] != null) createCharacterButtons[i].onClick.RemoveAllListeners();
-                if (deleteCharacterButtons[i] != null) deleteCharacterButtons[i].onClick.RemoveAllListeners();
+                if (i < characterSlotButtons?.Length && characterSlotButtons[i] != null) 
+                    characterSlotButtons[i].onClick.RemoveAllListeners();
+                if (i < createCharacterButtons?.Length && createCharacterButtons[i] != null) 
+                    createCharacterButtons[i].onClick.RemoveAllListeners();
+                if (i < deleteCharacterButtons?.Length && deleteCharacterButtons[i] != null) 
+                    deleteCharacterButtons[i].onClick.RemoveAllListeners();
             }
 
             if (selectButton != null) selectButton.onClick.RemoveAllListeners();
