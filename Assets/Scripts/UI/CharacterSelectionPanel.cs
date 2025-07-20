@@ -9,13 +9,16 @@ namespace SimpleMMO.UI
 {
     public class CharacterSelectionPanel : MonoBehaviour
     {
+        [Header("Character Slots Configuration")]
+        [SerializeField] private int maxCharacterSlots = 3;
+        
         [Header("UI References")]
         [SerializeField] private TextMeshProUGUI titleText;
-        [SerializeField] private Button[] characterSlotButtons = new Button[3];
-        [SerializeField] private TextMeshProUGUI[] characterNameTexts = new TextMeshProUGUI[3];
-        [SerializeField] private TextMeshProUGUI[] characterInfoTexts = new TextMeshProUGUI[3];
-        [SerializeField] private Button[] createCharacterButtons = new Button[3];
-        [SerializeField] private Button[] deleteCharacterButtons = new Button[3];
+        [SerializeField] private Button[] characterSlotButtons;
+        [SerializeField] private TextMeshProUGUI[] characterNameTexts;
+        [SerializeField] private TextMeshProUGUI[] characterInfoTexts;
+        [SerializeField] private Button[] createCharacterButtons;
+        [SerializeField] private Button[] deleteCharacterButtons;
         [SerializeField] private Button selectButton;
         [SerializeField] private Button backButton;
         [SerializeField] private TextMeshProUGUI statusText;
@@ -32,9 +35,28 @@ namespace SimpleMMO.UI
 
         private void Start()
         {
+            ValidateArraySizes();
             InitializeUI();
             SetupEventListeners();
             LoadCharacterList();
+        }
+
+        private void ValidateArraySizes()
+        {
+            if (characterSlotButtons?.Length != maxCharacterSlots)
+                Debug.LogError($"CharacterSelectionPanel: characterSlotButtons array size ({characterSlotButtons?.Length}) doesn't match maxCharacterSlots ({maxCharacterSlots})");
+            
+            if (characterNameTexts?.Length != maxCharacterSlots)
+                Debug.LogError($"CharacterSelectionPanel: characterNameTexts array size ({characterNameTexts?.Length}) doesn't match maxCharacterSlots ({maxCharacterSlots})");
+            
+            if (characterInfoTexts?.Length != maxCharacterSlots)
+                Debug.LogError($"CharacterSelectionPanel: characterInfoTexts array size ({characterInfoTexts?.Length}) doesn't match maxCharacterSlots ({maxCharacterSlots})");
+            
+            if (createCharacterButtons?.Length != maxCharacterSlots)
+                Debug.LogError($"CharacterSelectionPanel: createCharacterButtons array size ({createCharacterButtons?.Length}) doesn't match maxCharacterSlots ({maxCharacterSlots})");
+            
+            if (deleteCharacterButtons?.Length != maxCharacterSlots)
+                Debug.LogError($"CharacterSelectionPanel: deleteCharacterButtons array size ({deleteCharacterButtons?.Length}) doesn't match maxCharacterSlots ({maxCharacterSlots})");
         }
 
         private void InitializeUI()
@@ -85,6 +107,12 @@ namespace SimpleMMO.UI
             Debug.Log("CharacterSelectionPanel: Loading character list");
             
             string sessionTicket = SessionManager.Instance.SessionTicket;
+            if (string.IsNullOrEmpty(sessionTicket))
+            {
+                SetStatusText("No active session. Please login again.", Color.red);
+                OnBackButtonClicked();
+                return;
+            }
             AuthApiClient.Instance.GetCharacters(sessionTicket, OnCharacterListSuccess, OnCharacterListFailure);
         }
 
@@ -116,7 +144,7 @@ namespace SimpleMMO.UI
 
         private void UpdateCharacterSlots()
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < characterSlotButtons.Length; i++)
             {
                 var character = PlayerDataManager.Instance.GetCharacterAtSlot(i);
                 bool hasCharacter = character != null;
@@ -131,7 +159,7 @@ namespace SimpleMMO.UI
                 {
                     characterInfoTexts[i].gameObject.SetActive(hasCharacter);
                     if (hasCharacter) 
-                        characterInfoTexts[i].text = $"HP: {character.hp}/{character.maxHp}\nPos: ({character.posX:F1}, {character.posY:F1})";
+                        characterInfoTexts[i].text = $"HP: {character.hp}/{character.maxHp}\nPos: ({character.posX.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}, {character.posY.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)})";
                 }
 
                 if (createCharacterButtons[i] != null)
@@ -179,6 +207,10 @@ namespace SimpleMMO.UI
             var character = PlayerDataManager.Instance.GetCharacterAtSlot(slotIndex);
             if (character == null) return;
 
+            // TODO: Implement character deletion feature
+            // - Add AuthApiClient.DeleteCharacter() method
+            // - Add confirmation dialog
+            // - Handle server response and update UI
             SetStatusText($"Delete feature not implemented yet for {character.name}", Color.yellow);
         }
 
@@ -237,12 +269,25 @@ namespace SimpleMMO.UI
                 return;
             }
 
+            // Check for valid characters (letters, numbers, spaces only)
+            if (!System.Text.RegularExpressions.Regex.IsMatch(characterName, @"^[a-zA-Z0-9 ]+$"))
+            {
+                SetStatusText("Character name can only contain letters, numbers, and spaces!", Color.red);
+                return;
+            }
+
             SetLoadingState(true);
             SetStatusText("Creating character...", Color.white);
             
             Debug.Log($"CharacterSelectionPanel: Creating character '{characterName}' in slot {creatingSlotIndex}");
             
             string sessionTicket = SessionManager.Instance.SessionTicket;
+            if (string.IsNullOrEmpty(sessionTicket))
+            {
+                SetStatusText("No active session. Please login again.", Color.red);
+                OnBackButtonClicked();
+                return;
+            }
             AuthApiClient.Instance.CreateCharacter(sessionTicket, characterName, OnCharacterCreateSuccess, OnCharacterCreateFailure);
         }
 
@@ -287,14 +332,20 @@ namespace SimpleMMO.UI
             GameFlowManager.Instance.LoadGameScene();
         }
 
+        private void SetButtonArrayState(Button[] buttons, bool enabled)
+        {
+            if (buttons == null) return;
+            foreach (var button in buttons)
+            {
+                if (button != null) button.interactable = enabled;
+            }
+        }
+
         private void SetLoadingState(bool isLoading)
         {
-            for (int i = 0; i < characterSlotButtons.Length; i++)
-            {
-                if (characterSlotButtons[i] != null) characterSlotButtons[i].interactable = !isLoading;
-                if (createCharacterButtons[i] != null) createCharacterButtons[i].interactable = !isLoading;
-                if (deleteCharacterButtons[i] != null) deleteCharacterButtons[i].interactable = !isLoading;
-            }
+            SetButtonArrayState(characterSlotButtons, !isLoading);
+            SetButtonArrayState(createCharacterButtons, !isLoading);
+            SetButtonArrayState(deleteCharacterButtons, !isLoading);
 
             if (selectButton != null) selectButton.interactable = !isLoading && selectedSlotIndex >= 0;
             if (backButton != null) backButton.interactable = !isLoading;
@@ -317,6 +368,8 @@ namespace SimpleMMO.UI
 
         private void OnDestroy()
         {
+            // Note: Using RemoveAllListeners() for simplicity with lambda functions
+            // In a larger project, consider storing Action references for specific RemoveListener calls
             for (int i = 0; i < characterSlotButtons.Length; i++)
             {
                 if (characterSlotButtons[i] != null) characterSlotButtons[i].onClick.RemoveAllListeners();
