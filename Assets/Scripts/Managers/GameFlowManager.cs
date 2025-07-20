@@ -23,14 +23,14 @@ public class GameFlowManager : MonoBehaviour
 
     public static void Initialize()
     {
-        if (_instance != null)
-        {
-            Debug.LogWarning("GameFlowManager: Already initialized");
-            return;
-        }
-        
         lock (_lock)
         {
+            if (_instance != null)
+            {
+                Debug.LogWarning("GameFlowManager: Already initialized");
+                return;
+            }
+            
             if (_instance == null)
             {
                 GameObject go = new GameObject("GameFlowManager");

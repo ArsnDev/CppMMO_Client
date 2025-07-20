@@ -26,14 +26,14 @@ namespace SimpleMMO.Managers
         
         public static void Initialize()
         {
-            if (_instance != null)
-            {
-                Debug.LogWarning("PlayerDataManager: Already initialized");
-                return;
-            }
-            
             lock (_lock)
             {
+                if (_instance != null)
+                {
+                    Debug.LogWarning("PlayerDataManager: Already initialized");
+                    return;
+                }
+                
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("PlayerDataManager");

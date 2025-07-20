@@ -1,5 +1,4 @@
 using UnityEngine;
-using SimpleMMO.Managers;
 using SimpleMMO.Network;
 
 namespace SimpleMMO.Managers
@@ -21,12 +20,20 @@ namespace SimpleMMO.Managers
         {
             Debug.Log("GameInitializer: Starting manager initialization...");
             
-            GameFlowManager.Initialize();
-            SessionManager.Initialize();
-            PlayerDataManager.Initialize();
-            GameServerClient.Initialize();
-            
-            Debug.Log("GameInitializer: All managers initialized successfully");
+            try
+            {
+                GameFlowManager.Initialize();
+                SessionManager.Initialize();
+                PlayerDataManager.Initialize();
+                GameServerClient.Initialize();
+                
+                Debug.Log("GameInitializer: All managers initialized successfully");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"GameInitializer: Failed to initialize managers: {e.Message}");
+                throw;
+            }
         }
 
         public static bool AreManagersInitialized()

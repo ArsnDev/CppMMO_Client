@@ -58,14 +58,14 @@ namespace SimpleMMO.Network
         /// </summary>
         public static void Initialize()
         {
-            if (_instance != null)
-            {
-                Debug.LogWarning("GameServerClient: Already initialized");
-                return;
-            }
-            
             lock (_lock)
             {
+                if (_instance != null)
+                {
+                    Debug.LogWarning("GameServerClient: Already initialized");
+                    return;
+                }
+                
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("GameServerClient");
@@ -137,13 +137,14 @@ namespace SimpleMMO.Network
 
             try
             {
+                _stream?.Close();
+                _client?.Close();
+                
                 if (_receiveThread != null && _receiveThread.IsAlive)
                 {
                     _receiveThread.Interrupt();
                     _receiveThread.Join(1000);
                 }
-                _stream?.Close();
-                _client?.Close();
                 _isConnected = false;
             }
             catch (Exception ex)
