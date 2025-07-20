@@ -43,23 +43,20 @@ namespace SimpleMMO.UI
             else
                 Debug.LogError("LoginPanel: Register button is not assigned.");
             if (passwordInput != null)
-                passwordInput.onEndEdit.AddListener(OnPasswordEndEdit);
+                passwordInput.onSubmit.AddListener(OnPasswordSubmit);
             else
                 Debug.LogError("LoginPanel: Password input field is not assigned.");
         }
 
-        private void OnPasswordEndEdit(string value)
+        private void OnPasswordSubmit(string value)
         {
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            {
-                OnLoginButtonClicked();
-            }
+            OnLoginButtonClicked();
         }
 
         private void OnLoginButtonClicked()
         {
             string username = usernameInput?.text?.Trim();
-            string password = passwordInput?.text.Trim();
+            string password = passwordInput?.text;
             
             if (!ValidateLoginInput(username, password))
             {
@@ -92,7 +89,7 @@ namespace SimpleMMO.UI
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                SetStatusText("Password cannot be empty", Color.red);
+                SetStatusText("Password cannot be empty.", Color.red);
                 return false;
             }
 
@@ -218,7 +215,7 @@ namespace SimpleMMO.UI
             if (registerButton != null)
                 registerButton.onClick.RemoveListener(OnRegisterButtonClicked);
             if (passwordInput != null)
-                passwordInput.onEndEdit.RemoveListener(OnPasswordEndEdit);
+                passwordInput.onSubmit.RemoveListener(OnPasswordSubmit);
             Debug.Log("LoginPanel: Event listeners removed.");
         }
     }
