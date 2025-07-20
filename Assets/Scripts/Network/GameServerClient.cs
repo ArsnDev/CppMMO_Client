@@ -42,19 +42,37 @@ namespace SimpleMMO.Network
         {
             get
             {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                    {
+                        Debug.LogError("GameServerClient: Instance not initialized. Call Initialize() from main thread first.");
+                    }
+                    return _instance;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Initialize the singleton instance. Must be called from Unity main thread.
+        /// </summary>
+        public static void Initialize()
+        {
+            lock (_lock)
+            {
+                if (_instance != null)
+                {
+                    Debug.LogWarning("GameServerClient: Already initialized");
+                    return;
+                }
+                
                 if (_instance == null)
                 {
-                    lock (_lock)
-                    {
-                        if (_instance == null)
-                        {
-                            GameObject go = new GameObject("GameServerClient");
-                            _instance = go.AddComponent<GameServerClient>();
-                            DontDestroyOnLoad(go);
-                        }
-                    }
+                    GameObject go = new GameObject("GameServerClient");
+                    _instance = go.AddComponent<GameServerClient>();
+                    DontDestroyOnLoad(go);
+                    Debug.Log("GameServerClient: Initialized successfully");
                 }
-                return _instance;
             }
         }
 
@@ -69,6 +87,7 @@ namespace SimpleMMO.Network
                 }
                 else if (_instance != this)
                 {
+                    Debug.LogWarning("GameServerClient: Duplicate instance detected, destroying");
                     Destroy(gameObject);
                     return;
                 }
@@ -118,13 +137,14 @@ namespace SimpleMMO.Network
 
             try
             {
+                _stream?.Close();
+                _client?.Close();
+                
                 if (_receiveThread != null && _receiveThread.IsAlive)
                 {
                     _receiveThread.Interrupt();
                     _receiveThread.Join(1000);
                 }
-                _stream?.Close();
-                _client?.Close();
                 _isConnected = false;
             }
             catch (Exception ex)

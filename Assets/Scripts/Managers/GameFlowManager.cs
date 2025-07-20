@@ -4,29 +4,57 @@ using UnityEngine;
 public class GameFlowManager : MonoBehaviour
 {
     private static GameFlowManager _instance;
+    private static readonly object _lock = new object();
+    
     public static GameFlowManager Instance
     {
         get
         {
+            lock (_lock)
+            {
+                if (_instance == null)
+                {
+                    Debug.LogError("GameFlowManager: Instance not initialized. Call Initialize() from main thread first.");
+                }
+                return _instance;
+            }
+        }
+    }
+
+    public static void Initialize()
+    {
+        lock (_lock)
+        {
+            if (_instance != null)
+            {
+                Debug.LogWarning("GameFlowManager: Already initialized");
+                return;
+            }
+            
             if (_instance == null)
             {
                 GameObject go = new GameObject("GameFlowManager");
                 _instance = go.AddComponent<GameFlowManager>();
                 DontDestroyOnLoad(go);
+                Debug.Log("GameFlowManager: Initialized successfully");
             }
-            return _instance;
         }
     }
     void Awake()
     {
-        if (_instance == null)
+        lock (_lock)
         {
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else if (_instance != this)
-        {
-            Destroy(gameObject);
+            if (_instance == null)
+            {
+                _instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else if (_instance != this)
+            {
+                Debug.LogWarning("GameFlowManager: Duplicate instance detected, destroying");
+                Destroy(gameObject);
+                return;
+            }
         }
     }
 

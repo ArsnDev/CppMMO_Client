@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SimpleMMO.Managers
 {
-    public class  SessionManager : MonoBehaviour
+    public class SessionManager : MonoBehaviour
     {
         private static SessionManager _instance;
         private static readonly object _lock = new object();
@@ -13,19 +13,34 @@ namespace SimpleMMO.Managers
         {
             get
             {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                    {
+                        Debug.LogError("SessionManager: Instance not initialized. Call Initialize() from main thread first.");
+                    }
+                    return _instance;
+                }
+            }
+        }
+        
+        public static void Initialize()
+        {
+            lock (_lock)
+            {
+                if (_instance != null)
+                {
+                    Debug.LogWarning("SessionManager: Already initialized");
+                    return;
+                }
+                
                 if (_instance == null)
                 {
-                    lock (_lock)
-                    {
-                        if (_instance == null)
-                        {
-                            GameObject go = new GameObject("SessionManager");
-                            _instance = go.AddComponent<SessionManager>();
-                            DontDestroyOnLoad(go);
-                        }
-                    }
+                    GameObject go = new GameObject("SessionManager");
+                    _instance = go.AddComponent<SessionManager>();
+                    DontDestroyOnLoad(go);
+                    Debug.Log("SessionManager: Initialized successfully");
                 }
-                return _instance;
             }
         }
 
@@ -40,6 +55,7 @@ namespace SimpleMMO.Managers
                 }
                 else if (_instance != this)
                 {
+                    Debug.LogWarning("SessionManager: Duplicate instance detected, destroying");
                     Destroy(gameObject);
                     return;
                 }
@@ -86,7 +102,6 @@ namespace SimpleMMO.Managers
 
         void OnApplicationFocus(bool hasFocus)
         {
-            // 포커스 잃을 때 세션 검증
             if (hasFocus && IsLoggedIn)
             {
                 ValidateSession();
