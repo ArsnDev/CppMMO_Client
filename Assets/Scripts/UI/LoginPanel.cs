@@ -153,7 +153,7 @@ namespace SimpleMMO.UI
             Debug.LogError($"LoginPanel: Login failed with error: {error}");
         }
 
-        private void OnRegisterSuccess(RegisterResponse response)
+        private void OnRegisterSuccess(LoginResponse response)
         {
             SetLoadingState(false);
             if (response.success)
