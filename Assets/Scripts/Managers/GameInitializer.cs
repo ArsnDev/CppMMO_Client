@@ -22,11 +22,12 @@ namespace SimpleMMO.Managers
         /// <summary>
         /// Initialize all core managers in dependency order.
         /// Thread-safe implementation prevents multiple initialization attempts.
-        /// Initialization order: GameFlowManager → SessionManager → PlayerDataManager → GameServerClient
+        /// Initialization order: GameFlowManager → SessionManager → PlayerDataManager → GameServerClient → PlayerInputManager
         /// GameFlowManager: No dependencies (scene management)
         /// SessionManager: No dependencies (session storage)
         /// PlayerDataManager: Depends on SessionManager for user context
         /// GameServerClient: Depends on SessionManager for authentication
+        /// PlayerInputManager: Depends on GameServerClient for packet transmission
         /// </summary>
         public static void InitializeManagers()
         {
@@ -48,6 +49,7 @@ namespace SimpleMMO.Managers
                     SessionManager.Initialize();     // No dependencies  
                     PlayerDataManager.Initialize();  // Depends on SessionManager
                     GameServerClient.Initialize();   // Depends on SessionManager
+                    PlayerInputManager.Initialize(); // Depends on GameServerClient
                     
                     _hasInitialized = true;
                     Debug.Log("GameInitializer: All managers initialized successfully");
@@ -65,7 +67,8 @@ namespace SimpleMMO.Managers
             return GameFlowManager.Instance != null &&
                    SessionManager.Instance != null &&
                    PlayerDataManager.Instance != null &&
-                   GameServerClient.Instance != null;
+                   GameServerClient.Instance != null &&
+                   PlayerInputManager.Instance != null;
         }
     }
 }

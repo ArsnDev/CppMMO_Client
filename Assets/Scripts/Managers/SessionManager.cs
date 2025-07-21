@@ -76,7 +76,7 @@ namespace SimpleMMO.Managers
         public void SaveSession(string ticket)
         {
             sessionTicket = ticket;
-            Debug.Log($"Session saved: {(ticket.Length > 8 ? ticket.Substring(0, 8) + "..." : ticket)}");
+            Debug.Log("Session saved: [REDACTED]");
         }
 
         public void ClearSession()
