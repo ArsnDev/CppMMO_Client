@@ -264,6 +264,8 @@ namespace SimpleMMO.Managers
                     if (WorldSyncManager.Instance != null)
                     {
                         WorldSyncManager.Instance.SetLocalPlayer(localPlayer);
+                        // Ensure WorldSyncManager is properly subscribed to events
+                        WorldSyncManager.Instance.RetrySubscription();
                     }
 
                     SetupCameraFollow(playerObj.transform);

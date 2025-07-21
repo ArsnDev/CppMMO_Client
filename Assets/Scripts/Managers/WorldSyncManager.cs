@@ -7,7 +7,6 @@ using System.Collections.Generic;
 
 namespace SimpleMMO.Managers
 {
-    [DefaultExecutionOrder(0)]
     public class WorldSyncManager : MonoBehaviour
     {
         [Header("Sync Settings")]
@@ -24,6 +23,12 @@ namespace SimpleMMO.Managers
         
         private ulong lastTickNumber = 0;
         private float lastSyncTime = 0f;
+        
+        // Coroutine management
+        private Coroutine currentInterpolation;
+        
+        // Subscription tracking
+        private bool isSubscribed = false;
 
         void Awake()
         {
@@ -56,12 +61,13 @@ namespace SimpleMMO.Managers
         private void SubscribeToEvents()
         {
             var gameClient = GameServerClient.Instance;
-            if (gameClient != null)
+            if (gameClient != null && !isSubscribed)
             {
                 gameClient.OnWorldSnapshot += OnWorldSnapshot;
+                isSubscribed = true;
                 LogDebug("Subscribed to WorldSnapshot events");
             }
-            else
+            else if (gameClient == null)
             {
                 Debug.LogWarning("WorldSyncManager: GameServerClient not available");
             }
@@ -70,9 +76,10 @@ namespace SimpleMMO.Managers
         private void UnsubscribeFromEvents()
         {
             var gameClient = GameServerClient.Instance;
-            if (gameClient != null)
+            if (gameClient != null && isSubscribed)
             {
                 gameClient.OnWorldSnapshot -= OnWorldSnapshot;
+                isSubscribed = false;
                 LogDebug("Unsubscribed from WorldSnapshot events");
             }
         }
@@ -138,7 +145,14 @@ namespace SimpleMMO.Managers
 
             if (enablePositionInterpolation)
             {
-                StartCoroutine(InterpolateToPosition(localPlayer, serverPosition));
+                // Stop any previous interpolation to prevent conflicts
+                if (currentInterpolation != null)
+                {
+                    StopCoroutine(currentInterpolation);
+                }
+                
+                // Start smooth position interpolation
+                currentInterpolation = StartCoroutine(InterpolateToPosition(localPlayer, serverPosition));
             }
             else
             {
@@ -165,6 +179,7 @@ namespace SimpleMMO.Managers
             if (distance > teleportThreshold)
             {
                 player.UpdatePosition(targetPosition);
+                currentInterpolation = null; // Clear reference
                 yield break;
             }
 
@@ -176,7 +191,9 @@ namespace SimpleMMO.Managers
                 yield return null;
             }
 
+            // Ensure final position accuracy
             player.UpdatePosition(targetPosition);
+            currentInterpolation = null; // Clear reference when completed
         }
 
         private void ProcessGameEvents(S_WorldSnapshot snapshot)
@@ -249,6 +266,17 @@ namespace SimpleMMO.Managers
         public void SetInterpolationSpeed(float speed)
         {
             interpolationSpeed = Mathf.Clamp(speed, 1f, 50f);
+        }
+
+        /// <summary>
+        /// Retry subscription to GameServerClient events if it becomes available after Start()
+        /// </summary>
+        public void RetrySubscription()
+        {
+            if (GameServerClient.Instance != null && !isSubscribed)
+            {
+                SubscribeToEvents();
+            }
         }
 
         #endregion
