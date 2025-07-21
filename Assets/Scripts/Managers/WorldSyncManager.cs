@@ -7,11 +7,13 @@ using System.Collections.Generic;
 
 namespace SimpleMMO.Managers
 {
+    [DefaultExecutionOrder(0)]
     public class WorldSyncManager : MonoBehaviour
     {
         [Header("Sync Settings")]
         [SerializeField] private float interpolationSpeed = 10f;
         [SerializeField] private bool enablePositionInterpolation = true;
+        [SerializeField] private float teleportThreshold = 10f;
         
         [Header("Debug")]
         [SerializeField] private bool enableDebugLogs = false;
@@ -124,7 +126,7 @@ namespace SimpleMMO.Managers
             }
             else
             {
-                // 다른 플레이어 동기화 (TODO: MultiplayerManager로 이관)
+                // Sync other players (TODO: Move to MultiplayerManager)
                 SyncRemotePlayer(playerState);
             }
         }
@@ -150,7 +152,7 @@ namespace SimpleMMO.Managers
 
         private void SyncRemotePlayer(PlayerState playerState)
         {
-            // TODO: MultiplayerManager와 연동하여 다른 플레이어 동기화
+            // TODO: Integrate with MultiplayerManager to sync other players
             LogDebug($"Remote player {playerState.PlayerId} at {playerState.Position?.ToUnityVector3()}");
         }
 
@@ -160,7 +162,7 @@ namespace SimpleMMO.Managers
             float journey = 0f;
             float distance = Vector3.Distance(startPosition, targetPosition);
 
-            if (distance > 10f)
+            if (distance > teleportThreshold)
             {
                 player.UpdatePosition(targetPosition);
                 yield break;
@@ -200,22 +202,22 @@ namespace SimpleMMO.Managers
             {
                 case CppMMO.Protocol.EventType.PLAYER_DAMAGE:
                     LogDebug($"Player damage event: Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}, Value={gameEvent.Value}");
-                    // TODO: 데미지 이펙트 처리
+                    // TODO: Process damage effects
                     break;
 
                 case CppMMO.Protocol.EventType.PLAYER_HEAL:
                     LogDebug($"Player heal event: Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}, Value={gameEvent.Value}");
-                    // TODO: 힐 이펙트 처리
+                    // TODO: Process heal effects
                     break;
 
                 case CppMMO.Protocol.EventType.PLAYER_DEATH:
                     LogDebug($"Player death event: Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}");
-                    // TODO: 사망 이펙트 처리
+                    // TODO: Process death effects
                     break;
 
                 case CppMMO.Protocol.EventType.PLAYER_RESPAWN:
                     LogDebug($"Player respawn event: PlayerId={gameEvent.SourcePlayerId}, Position={gameEvent.Position?.ToUnityVector3()}");
-                    // TODO: 리스폰 이펙트 처리
+                    // TODO: Process respawn effects
                     break;
 
                 case CppMMO.Protocol.EventType.NONE:
@@ -235,7 +237,7 @@ namespace SimpleMMO.Managers
 
         #region Public API
 
-        public bool IsReceivingUpdates => Time.time - lastSyncTime < 1f; // 1초 이내 업데이트 수신 확인
+        public bool IsReceivingUpdates => Time.time - lastSyncTime < 1f; // Check if updates received within 1 second
         public ulong LastTickNumber => lastTickNumber;
         public float LastSyncTime => lastSyncTime;
 

@@ -3,49 +3,72 @@ using SimpleMMO.Network;
 
 namespace SimpleMMO.Managers
 {
+    [DefaultExecutionOrder(-100)]
     public class PlayerInputManager : MonoBehaviour
     {
         public static PlayerInputManager Instance { get; private set; }
         
+        private static readonly object _lock = new object();
         private Camera mainCamera;
 
         public static void Initialize()
         {
-            if (Instance == null)
+            lock (_lock)
             {
-                GameObject obj = new GameObject("PlayerInputManager");
-                Instance = obj.AddComponent<PlayerInputManager>();
-                DontDestroyOnLoad(obj);
-                Debug.Log("PlayerInputManager initialized");
+                if (Instance == null)
+                {
+                    GameObject obj = new GameObject("PlayerInputManager");
+                    Instance = obj.AddComponent<PlayerInputManager>();
+                    DontDestroyOnLoad(obj);
+                    Debug.Log("PlayerInputManager initialized");
+                }
+                else
+                {
+                    Debug.LogWarning("PlayerInputManager: Already initialized");
+                }
             }
         }
 
         void Start()
         {
-            // 메인 카메라 캐싱
-            if (mainCamera == null)
+            StartCoroutine(InitializeCamera());
+        }
+
+        private System.Collections.IEnumerator InitializeCamera()
+        {
+            // Try to cache main camera with retries
+            int retries = 5;
+            while (mainCamera == null && retries > 0)
             {
                 mainCamera = Camera.main;
                 if (mainCamera == null)
                 {
-                    Debug.LogWarning("PlayerInputManager: Main camera not found");
+                    retries--;
+                    if (retries > 0)
+                    {
+                        yield return new WaitForSeconds(0.5f);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("PlayerInputManager: Main camera not found after retries");
+                    }
                 }
             }
         }
 
-        public void SendInput(byte inputFlags, uint sequenceNumber = 0)
+        public void SendInput(byte inputFlags)
         {
-            // 연결 상태 확인
+            // Check connection status
             if (GameServerClient.Instance == null)
             {
                 Debug.LogWarning("PlayerInputManager: GameServerClient not available");
                 return;
             }
 
-            // 마우스 월드 좌표 변환
+            // Convert mouse position to world coordinates
             Vector3 mouseWorldPos = GetMouseWorldPosition();
             
-            // GameServerClient가 시퀀스 번호를 자체 관리하므로 직접 호출
+            // Call directly as GameServerClient manages sequence numbers internally
             GameServerClient.Instance.SendPlayerInput(inputFlags, mouseWorldPos);
             
             Debug.Log($"Input sent: Flags=0x{inputFlags:X2}, MousePos={mouseWorldPos}");
@@ -57,12 +80,12 @@ namespace SimpleMMO.Managers
             {
                 Vector3 mouseScreenPos = Input.mousePosition;
                 Vector3 mouseWorldPos = mainCamera.ScreenToWorldPoint(mouseScreenPos);
-                mouseWorldPos.z = 0f; // 2D 게임이므로 z=0
+                mouseWorldPos.z = 0f; // 2D game, z=0
                 return mouseWorldPos;
             }
             else
             {
-                // 카메라가 없으면 기본값 반환
+                // Return default if no camera
                 return Vector3.zero;
             }
         }

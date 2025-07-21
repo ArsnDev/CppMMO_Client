@@ -6,6 +6,7 @@ using SimpleMMO.Protocol.Extensions;
 
 namespace SimpleMMO.Managers
 {
+    [DefaultExecutionOrder(-50)]
     public class InGameManager : MonoBehaviour
     {
         [Header("Game Settings")]
@@ -95,7 +96,7 @@ namespace SimpleMMO.Managers
                 return false;
             }
 
-            LogDebug($"Session: {sessionTicket.Substring(0, 8)}..., Character: {selectedCharacter.name} (ID: {selectedCharacter.playerId})");
+            LogDebug($"Session: [REDACTED], Character: {selectedCharacter.name} (ID: {selectedCharacter.playerId})");
             return true;
         }
 
@@ -220,8 +221,8 @@ namespace SimpleMMO.Managers
 
         private void OnWorldSnapshot(S_WorldSnapshot snapshot)
         {
-            // WorldSyncManager로 이관 - 이 메소드는 더 이상 필요하지 않음
-            // WorldSyncManager가 직접 OnWorldSnapshot 이벤트를 구독함
+            // Delegated to WorldSyncManager - this method is no longer needed
+            // WorldSyncManager directly subscribes to OnWorldSnapshot event
         }
 
         private void OnPlayerJoined(S_PlayerJoined playerJoined)
@@ -259,7 +260,7 @@ namespace SimpleMMO.Managers
                     localPlayer.Initialize(info.PlayerId, info.Name, isLocal: true);
                     LogDebug($"Local player spawned: {info.Name} at {spawnPosition}");
 
-                    // WorldSyncManager에 로컬 플레이어 등록
+                    // Register local player with WorldSyncManager
                     if (WorldSyncManager.Instance != null)
                     {
                         WorldSyncManager.Instance.SetLocalPlayer(localPlayer);

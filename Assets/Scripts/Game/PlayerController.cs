@@ -15,12 +15,22 @@ namespace SimpleMMO.Game
         public ulong PlayerId { get; private set; }
         public string PlayerName { get; private set; }
 
-        void Start()
+        void Awake()
         {
             if (spriteRenderer == null)
             {
                 spriteRenderer = GetComponent<SpriteRenderer>();
             }
+            
+            if (nameText == null)
+            {
+                nameText = GetComponentInChildren<TMPro.TextMeshPro>();
+            }
+        }
+
+        void Start()
+        {
+            // Additional initialization if needed
         }
 
         void Update()
@@ -31,24 +41,30 @@ namespace SimpleMMO.Game
             }
         }
 
+        [Header("Input Configuration")]
+        private const byte INPUT_UP = 0x01;
+        private const byte INPUT_DOWN = 0x02;
+        private const byte INPUT_LEFT = 0x04;
+        private const byte INPUT_RIGHT = 0x08;
+
         private void HandleInput()
         {
             byte inputFlags = 0;
             if (Input.GetKey(KeyCode.W))
             {
-                inputFlags |= 0x01; // Move Up
+                inputFlags |= INPUT_UP;
             }
             if (Input.GetKey(KeyCode.S))
             {
-                inputFlags |= 0x02; // Move Down
+                inputFlags |= INPUT_DOWN;
             }
             if (Input.GetKey(KeyCode.A))
             {
-                inputFlags |= 0x04; // Move Left
+                inputFlags |= INPUT_LEFT;
             }
             if (Input.GetKey(KeyCode.D))
             {
-                inputFlags |= 0x08; // Move Right
+                inputFlags |= INPUT_RIGHT;
             }
             if (inputFlags != 0)
             {
@@ -58,7 +74,14 @@ namespace SimpleMMO.Game
 
         private void SendPlayerInput(byte inputFlags)
         {
-            SimpleMMO.Managers.PlayerInputManager.Instance?.SendInput(inputFlags);
+            if (SimpleMMO.Managers.PlayerInputManager.Instance != null)
+            {
+                SimpleMMO.Managers.PlayerInputManager.Instance.SendInput(inputFlags);
+            }
+            else
+            {
+                Debug.LogWarning("PlayerController: PlayerInputManager not available, input dropped");
+            }
         }
 
         public void Initialize(ulong playerId, string playerName, bool isLocal = false)
