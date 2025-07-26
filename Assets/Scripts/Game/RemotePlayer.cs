@@ -35,6 +35,7 @@ namespace SimpleMMO.Game
         // Position interpolation
         private Vector3 targetPosition;
         private Vector3 targetVelocity;
+        private Vector3 targetRotation;
         private bool hasTargetPosition = false;
         
         // Animation
@@ -159,6 +160,20 @@ namespace SimpleMMO.Game
                 float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
                 transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
             }
+        }
+
+        /// <summary>
+        /// Updates the player's rotation using server-provided rotation data.
+        /// Takes precedence over velocity-based rotation when available.
+        /// </summary>
+        /// <param name="rotation">The player's rotation vector from server</param>
+        public void UpdateRotation(Vector3 rotation)
+        {
+            targetRotation = rotation;
+            
+            // Apply rotation directly (server has authority)
+            float angle = Mathf.Atan2(rotation.y, rotation.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
         }
 
         /// <summary>

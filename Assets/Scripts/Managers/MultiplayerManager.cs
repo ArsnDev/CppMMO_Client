@@ -280,13 +280,14 @@ namespace SimpleMMO.Managers
         }
 
         /// <summary>
-        /// Updates the position and velocity of an existing remote player.
+        /// Updates the position, velocity, and rotation of an existing remote player.
         /// Only updates players that are currently active and spawned.
         /// </summary>
         /// <param name="playerId">The unique ID of the player to update</param>
         /// <param name="position">The new position for the player</param>
         /// <param name="velocity">Optional velocity information for smooth interpolation</param>
-        public void UpdateRemotePlayer(ulong playerId, Vector3 position, Vector3 velocity = default)
+        /// <param name="rotation">Optional rotation information for player orientation</param>
+        public void UpdateRemotePlayer(ulong playerId, Vector3 position, Vector3 velocity = default, Vector3 rotation = default)
         {
             if (activePlayers.TryGetValue(playerId, out RemotePlayer remotePlayer))
             {
@@ -294,6 +295,10 @@ namespace SimpleMMO.Managers
                 if (velocity != default)
                 {
                     remotePlayer.UpdateVelocity(velocity);
+                }
+                if (rotation != default)
+                {
+                    remotePlayer.UpdateRotation(rotation);
                 }
             }
         }
@@ -313,8 +318,9 @@ namespace SimpleMMO.Managers
 
             Vector3 position = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
             Vector3 velocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
+            Vector3 rotation = playerState.Rotation?.ToUnityVector3() ?? Vector3.zero;
             
-            UpdateRemotePlayer(playerState.PlayerId, position, velocity);
+            UpdateRemotePlayer(playerState.PlayerId, position, velocity, rotation);
         }
 
         /// <summary>
