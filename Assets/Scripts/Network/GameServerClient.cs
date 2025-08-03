@@ -167,7 +167,7 @@ namespace SimpleMMO.Network
             SendPacket(packet);
         }
 
-        public void SendPlayerInput(byte inputFlags, Vector3 mousePosition, Vector3 predictedPosition = default)
+        public uint SendPlayerInput(byte inputFlags, Vector3 mousePosition, Vector3 predictedPosition = default)
         {
             try
             {
@@ -180,17 +180,20 @@ namespace SimpleMMO.Network
                 Debug.LogError($"About to send - Connected: {_client.Connected}, Stream: {_stream != null}");
                 SendPacket(packetData);
                 Debug.LogError("SendPacket call completed");
+                
+                return currentSeq; // 실제 전송된 시퀀스 번호 반환
             }
             catch (System.Exception ex)
             {
                 Debug.LogError($"Error in PacketExtensions packet creation: {ex.Message}\n{ex.StackTrace}");
+                return 0; // 실패 시 0 반환
             }
         }
 
         // Backward compatibility method
-        public void SendPlayerInput(byte inputFlags)
+        public uint SendPlayerInput(byte inputFlags)
         {
-            SendPlayerInput(inputFlags, Vector3.zero, Vector3.zero);
+            return SendPlayerInput(inputFlags, Vector3.zero, Vector3.zero);
         }
 
         public void SendChat(string message)

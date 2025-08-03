@@ -131,16 +131,8 @@ namespace SimpleMMO.Managers
         {
             if (localPlayer != null && playerState.PlayerId == localPlayer.PlayerId)
             {
-                // Use reconciliation if we have a valid sequence number
-                if (lastProcessedSequence > 0)
-                {
-                    SyncLocalPlayerWithReconciliation(playerState, lastProcessedSequence);
-                }
-                else
-                {
-                    // Fallback to simple sync
-                    SyncLocalPlayer(playerState);
-                }
+                // Always use reconciliation for local player - server always sends valid lastProcessedSequence
+                SyncLocalPlayerWithReconciliation(playerState, lastProcessedSequence);
             }
             else
             {
@@ -168,8 +160,8 @@ namespace SimpleMMO.Managers
             Vector3 serverPosition = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
             Vector3 serverVelocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
 
-            // Perform server reconciliation
-            localPlayer.PerformReconciliation(serverPosition, lastProcessedSequence);
+            // Perform server reconciliation with server time
+            localPlayer.PerformReconciliation(serverPosition, lastProcessedSequence, lastTickNumber);
 
             // Update velocity for animation
             localPlayer.UpdateVelocity(serverVelocity);
@@ -177,7 +169,7 @@ namespace SimpleMMO.Managers
             // Update HP from server data
             localPlayer.UpdateHp(playerState.Hp, playerState.Mp);
 
-            LogDebug($"Local player reconciled: server={serverPosition}, sequence={lastProcessedSequence}, HP={playerState.Hp}");
+            LogDebug($"Local player reconciled: server={serverPosition}, velocity={serverVelocity}, sequence={lastProcessedSequence}, HP={playerState.Hp}");
         }
         
 

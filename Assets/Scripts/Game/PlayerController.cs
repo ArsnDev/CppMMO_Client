@@ -106,13 +106,22 @@ namespace SimpleMMO.Game
 
         /// <summary>
         /// Unity Update callback that handles per-frame logic.
-        /// Processes input for local players and updates animations for all players.
+        /// Uses fixed timestep for client prediction (30 TPS) and updates animations.
         /// </summary>
         void Update()
         {
             if (isLocalPlayer)
             {
-                HandleInput();
+                // 매 프레임 입력 상태 갱신
+                UpdateInputState();
+                
+                // 서버와 동일한 30 TPS로 예측 시뮬레이션
+                fixedUpdateTimer += Time.deltaTime;
+                while (fixedUpdateTimer >= FIXED_DELTA_TIME)
+                {
+                    HandleInputFixedTimestep();
+                    fixedUpdateTimer -= FIXED_DELTA_TIME;
+                }
             }
             
             UpdateAnimation();
@@ -127,15 +136,30 @@ namespace SimpleMMO.Game
         private byte lastInputFlags = 0;
         private float inputSendInterval = 1.0f / 20.0f; // 20Hz (0.05초마다)
         private float lastInputSendTime = 0f;
+        
+        // Fixed Timestep for client prediction (서버와 동일한 30 TPS)
+        private float fixedUpdateTimer = 0f;
+        private byte currentInputFlags = 0;
 
         [Header("Client Prediction")]
         [SerializeField] private bool enableClientPrediction = true;
         [SerializeField] private float predictionMoveSpeed = 5.0f;
+        
+        // Deterministic 시뮬레이션을 위한 고정 틱 레이트 (서버와 동일)
+        private const float SERVER_TICK_RATE = 30.0f;
+        private const float FIXED_DELTA_TIME = 1.0f / SERVER_TICK_RATE; // 33.33ms - 모든 시뮬레이션에서 사용
 
         // Client prediction state
         private Vector3 predictedPosition;
         private Vector3 serverPosition;
         private bool hasServerPosition = false;
+        
+        // Reconciliation 상태 추적 (빈도 제한 제거 - 즉각적인 보정)
+        private float lastReconciliationTime = 0f;
+        
+        // 서버 시간 동기화
+        private ulong lastServerTime = 0;
+        private float serverTimeOffset = 0f; // 서버-클라이언트 시간 오프셋
         
         // Input History for Server Reconciliation
         private struct InputRecord
@@ -182,64 +206,82 @@ namespace SimpleMMO.Game
         }
         
 
-        private void HandleInput()
+        /// <summary>
+        /// Updates current input state every frame (high frequency)
+        /// </summary>
+        private void UpdateInputState()
         {
-            byte inputFlags = 0;
+            currentInputFlags = 0;
             
             // Movement input
             if (Input.GetKey(KeyCode.W))
             {
-                inputFlags |= INPUT_UP;
+                currentInputFlags |= INPUT_UP;
             }
             if (Input.GetKey(KeyCode.S))
             {
-                inputFlags |= INPUT_DOWN;
+                currentInputFlags |= INPUT_DOWN;
             }
             if (Input.GetKey(KeyCode.A))
             {
-                inputFlags |= INPUT_LEFT;
+                currentInputFlags |= INPUT_LEFT;
             }
             if (Input.GetKey(KeyCode.D))
             {
-                inputFlags |= INPUT_RIGHT;
+                currentInputFlags |= INPUT_RIGHT;
             }
             
             // 애니메이션을 위한 이동 상태 업데이트
-            isMoving = inputFlags != 0;
+            isMoving = currentInputFlags != 0;
+        }
+
+        /// <summary>
+        /// Handles input processing and prediction at fixed timestep (30 TPS)
+        /// </summary>
+        private void HandleInputFixedTimestep()
+        {
+            byte inputFlags = currentInputFlags;
             
-            // 입력 상태가 변했거나 일정 시간이 지났을 때만 전송
+            // 입력 상태가 변했거나 일정 시간이 지났을 때만 서버에 전송
             bool inputChanged = inputFlags != lastInputFlags;
             bool timeToSend = Time.time - lastInputSendTime >= inputSendInterval;
             
+            // Record position BEFORE applying prediction
+            Vector3 positionBeforePrediction = enableClientPrediction ? predictedPosition : transform.position;
+            
+            // Client-side prediction: 서버와 동일한 30 TPS 고정 타임스텝
+            if (enableClientPrediction)
+            {
+                Vector3 direction = InputFlagsToDirection(inputFlags);
+                Vector3 movement = direction * predictionMoveSpeed * FIXED_DELTA_TIME;
+                predictedPosition += movement;
+                transform.position = predictedPosition;
+                
+                // 디버그: 예측 이동 로그
+                if (movement.magnitude > 0.001f)
+                {
+                    Debug.Log($"Fixed prediction: flags={inputFlags:X2}, direction={direction}, movement={movement}, fixedDT={FIXED_DELTA_TIME:F4}, newPos={predictedPosition}");
+                }
+            }
+            
+            // 서버에 입력 전송 (필요한 경우에만)
             if (inputFlags != 0 && (inputChanged || timeToSend))
             {
-                ProcessAndSendInput(inputFlags);
+                SendInputToServer(inputFlags, positionBeforePrediction);
             }
             else if (inputFlags == 0 && lastInputFlags != 0)
             {
                 // Send immediately when movement keys are released
-                ProcessAndSendInput(inputFlags);
+                SendInputToServer(inputFlags, positionBeforePrediction);
             }
         }
         
-        private void ProcessAndSendInput(byte inputFlags)
+        private void SendInputToServer(byte inputFlags, Vector3 positionBeforeInput)
         {
-            // Record position before applying input for reconciliation
-            Vector3 positionBeforeInput = enableClientPrediction ? predictedPosition : transform.position;
-            float currentDeltaTime = Time.deltaTime;
-            
-            // Client-side prediction: 즉시 로컬 움직임
-            if (enableClientPrediction)
-            {
-                Vector3 direction = InputFlagsToDirection(inputFlags);
-                Vector3 movement = direction * predictionMoveSpeed * currentDeltaTime;
-                predictedPosition += movement;
-                transform.position = predictedPosition;
-            }
-            
             // Send input to server and record in history
             uint sequenceNumber = SendPlayerInput(inputFlags);
-            RecordInput(sequenceNumber, inputFlags, positionBeforeInput, currentDeltaTime);
+            // 모든 시뮬레이션에서 동일한 고정 델타타임 사용 (deterministic)
+            RecordInput(sequenceNumber, inputFlags, positionBeforeInput, FIXED_DELTA_TIME);
             
             lastInputFlags = inputFlags;
             lastInputSendTime = Time.time;
@@ -255,12 +297,8 @@ namespace SimpleMMO.Game
         {
             if (SimpleMMO.Managers.PlayerInputManager.Instance != null)
             {
-                SimpleMMO.Managers.PlayerInputManager.Instance.SendInput(inputFlags);
-                // Get sequence number from GameServerClient
-                if (GameServerClient.Instance != null)
-                {
-                    return GameServerClient.Instance.CurrentSequenceNumber;
-                }
+                // PlayerInputManager now returns the actual sequence number used
+                return SimpleMMO.Managers.PlayerInputManager.Instance.SendInput(inputFlags);
             }
             else
             {
@@ -275,6 +313,13 @@ namespace SimpleMMO.Game
         private void RecordInput(uint sequenceNumber, byte inputFlags, Vector3 positionBeforeInput, float deltaTime)
         {
             if (sequenceNumber == 0) return; // Invalid sequence
+            
+            // Check for buffer overwrite - if we're about to overwrite an unprocessed input, warn
+            InputRecord existingRecord = inputHistory[historyHead];
+            if (existingRecord.sequenceNumber != 0)
+            {
+                Debug.LogWarning($"Input history buffer overwrite: seq {existingRecord.sequenceNumber} -> {sequenceNumber}. Consider increasing INPUT_HISTORY_SIZE.");
+            }
             
             // Record in circular buffer
             inputHistory[historyHead] = new InputRecord
@@ -337,48 +382,83 @@ namespace SimpleMMO.Game
         /// </summary>
         /// <param name="serverPosition">Authoritative position from server</param>
         /// <param name="lastProcessedSequence">Last sequence number processed by server</param>
-        public void PerformReconciliation(Vector3 serverPosition, uint lastProcessedSequence)
+        /// <param name="serverTime">Server timestamp for time synchronization</param>
+        public void PerformReconciliation(Vector3 serverPosition, uint lastProcessedSequence, ulong serverTime = 0)
         {
             if (!isLocalPlayer || !enableClientPrediction)
                 return;
-                
-            // Check if reconciliation is needed
-            float distanceError = Vector3.Distance(serverPosition, predictedPosition);
-            const float RECONCILIATION_THRESHOLD = 0.5f; // 0.5 unit 차이부터 보정
             
-            if (distanceError < RECONCILIATION_THRESHOLD)
+            // 서버 시간 동기화 업데이트
+            if (serverTime > 0 && serverTime != lastServerTime)
             {
-                // Small difference, just update server position for reference
-                this.serverPosition = serverPosition;
-                hasServerPosition = true;
+                float currentClientTime = Time.time * 1000; // ms로 변환
+                serverTimeOffset = (float)serverTime - currentClientTime;
+                lastServerTime = serverTime;
+                Debug.Log($"Server time sync updated: offset = {serverTimeOffset:F1}ms");
+            }
+            
+            // Clean up processed inputs from history to free memory
+            CleanProcessedInputs(lastProcessedSequence);
+                
+            // Get all unprocessed inputs after last processed sequence
+            List<InputRecord> unprocessedInputs = GetUnprocessedInputs(lastProcessedSequence);
+            
+            // Always update server position for reference
+            this.serverPosition = serverPosition;
+            hasServerPosition = true;
+            
+            // Check if reconciliation is needed (즉각적인 보정)
+            float distanceError = Vector3.Distance(serverPosition, predictedPosition);
+            const float RECONCILIATION_THRESHOLD = 0.1f; // 더 민감한 보정 (0.1 unit)
+            float currentTime = Time.time;
+            
+            // 즉각적인 보정: 오차가 있거나 처리되지 않은 입력이 있으면 바로 보정
+            if (distanceError < RECONCILIATION_THRESHOLD && unprocessedInputs.Count == 0)
+            {
+                // Small difference and no pending inputs, no reconciliation needed
+                Debug.Log($"No reconciliation needed: distance error = {distanceError:F3} < threshold, no pending inputs");
                 return;
             }
             
-            Debug.Log($"Reconciliation needed: distance error = {distanceError:F3}, threshold = {RECONCILIATION_THRESHOLD}");
-            
-            // Get all unprocessed inputs after last processed sequence
-            List<InputRecord> unprocessedInputs = GetUnprocessedInputs(lastProcessedSequence);
+            Debug.Log($"Reconciliation needed: distance error = {distanceError:F3}, threshold = {RECONCILIATION_THRESHOLD}, pending inputs = {unprocessedInputs.Count}");
             
             // Start from server's authoritative position
             Vector3 correctedPosition = serverPosition;
             
-            // Replay all unprocessed inputs
+            // Replay all unprocessed inputs with deterministic deltaTime
             foreach (var input in unprocessedInputs)
             {
                 Vector3 direction = InputFlagsToDirection(input.inputFlags);
-                Vector3 movement = direction * predictionMoveSpeed * input.deltaTime;
+                // 모든 재생에서 동일한 고정 델타타임 사용 (deterministic 보장)
+                Vector3 movement = direction * predictionMoveSpeed * FIXED_DELTA_TIME;
                 correctedPosition += movement;
                 
-                Debug.Log($"Replaying input seq={input.sequenceNumber}, flags={input.inputFlags:X2}, movement={movement}, dt={input.deltaTime:F4}");
+                Debug.Log($"Replaying input seq={input.sequenceNumber}, flags={input.inputFlags:X2}, movement={movement}, fixedDT={FIXED_DELTA_TIME:F4}");
             }
             
-            // Update positions
+            // Update predicted position
             predictedPosition = correctedPosition;
-            this.serverPosition = serverPosition;
-            hasServerPosition = true;
             transform.position = predictedPosition;
             
+            // 마지막 reconciliation 시간 업데이트 (통계용)
+            lastReconciliationTime = currentTime;
+            
             Debug.Log($"Reconciliation complete: server={serverPosition}, corrected={correctedPosition}, replayed {unprocessedInputs.Count} inputs");
+        }
+        
+        /// <summary>
+        /// Cleans up processed inputs from history to prevent memory waste
+        /// </summary>
+        private void CleanProcessedInputs(uint lastProcessedSequence)
+        {
+            for (int i = 0; i < INPUT_HISTORY_SIZE; i++)
+            {
+                if (inputHistory[i].sequenceNumber != 0 && inputHistory[i].sequenceNumber <= lastProcessedSequence)
+                {
+                    // Clear processed input
+                    inputHistory[i] = new InputRecord { sequenceNumber = 0 };
+                }
+            }
         }
         
         /// <summary>
