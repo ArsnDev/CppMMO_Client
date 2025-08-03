@@ -131,22 +131,20 @@ namespace SimpleMMO.Managers
         {
             if (localPlayer != null && playerState.PlayerId == localPlayer.PlayerId)
             {
-                // 임시로 reconciliation 비활성화 - sequence 문제 해결 필요
-                SyncLocalPlayer(playerState);
-                
-                // TODO: sequence number 문제 해결 후 활성화
-                // if (lastProcessedSequence > 0)
-                // {
-                //     SyncLocalPlayerWithReconciliation(playerState, lastProcessedSequence);
-                // }
-                // else
-                // {
-                //     SyncLocalPlayer(playerState);
-                // }
+                // Use reconciliation if we have a valid sequence number
+                if (lastProcessedSequence > 0)
+                {
+                    SyncLocalPlayerWithReconciliation(playerState, lastProcessedSequence);
+                }
+                else
+                {
+                    // Fallback to simple sync
+                    SyncLocalPlayer(playerState);
+                }
             }
             else
             {
-                // Sync other players (TODO: Move to MultiplayerManager)
+                // Sync other players (handled by MultiplayerManager)
                 SyncRemotePlayer(playerState);
             }
         }
@@ -156,9 +154,7 @@ namespace SimpleMMO.Managers
             Vector3 serverPosition = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
             Vector3 serverVelocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
 
-            // 클라이언트 예측과 충돌 방지: interpolation 비활성화
-            localPlayer.UpdatePosition(serverPosition);
-
+            // Update velocity for animation
             localPlayer.UpdateVelocity(serverVelocity);
             
             // Update HP from server data
@@ -167,22 +163,23 @@ namespace SimpleMMO.Managers
             LogDebug($"Local player synced: {serverPosition}, velocity: {serverVelocity}, HP: {playerState.Hp}");
         }
         
-        // TODO: Future sequence-based reconciliation method
-        // private void SyncLocalPlayerWithReconciliation(PlayerState playerState, uint lastProcessedSequence)
-        // {
-        //     Vector3 serverPosition = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
-        //     Vector3 serverVelocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
-        //
-        //     // Perform sequence-based reconciliation
-        //     localPlayer.PerformReconciliation(serverPosition, lastProcessedSequence);
-        //
-        //     localPlayer.UpdateVelocity(serverVelocity);
-        //     
-        //     // Update HP from server data
-        //     localPlayer.UpdateHp(playerState.Hp, playerState.Mp);
-        //
-        //     LogDebug($"Local player reconciled: {serverPosition}, sequence: {lastProcessedSequence}, HP: {playerState.Hp}");
-        // }
+        private void SyncLocalPlayerWithReconciliation(PlayerState playerState, uint lastProcessedSequence)
+        {
+            Vector3 serverPosition = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
+            Vector3 serverVelocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
+
+            // Perform server reconciliation
+            localPlayer.PerformReconciliation(serverPosition, lastProcessedSequence);
+
+            // Update velocity for animation
+            localPlayer.UpdateVelocity(serverVelocity);
+            
+            // Update HP from server data
+            localPlayer.UpdateHp(playerState.Hp, playerState.Mp);
+
+            LogDebug($"Local player reconciled: server={serverPosition}, sequence={lastProcessedSequence}, HP={playerState.Hp}");
+        }
+        
 
         private void SyncRemotePlayer(PlayerState playerState)
         {
