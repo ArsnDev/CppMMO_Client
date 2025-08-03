@@ -48,6 +48,45 @@ public struct S_ZoneEntered : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.S_ZoneEntered>(o);
   }
+  public S_ZoneEnteredT UnPack() {
+    var _o = new S_ZoneEnteredT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(S_ZoneEnteredT _o) {
+    _o.ZoneId = this.ZoneId;
+    _o.MyPlayer = this.MyPlayer.HasValue ? this.MyPlayer.Value.UnPack() : null;
+    _o.OtherPlayers = new List<CppMMO.Protocol.PlayerInfoT>();
+    for (var _j = 0; _j < this.OtherPlayersLength; ++_j) {_o.OtherPlayers.Add(this.OtherPlayers(_j).HasValue ? this.OtherPlayers(_j).Value.UnPack() : null);}
+  }
+  public static Offset<CppMMO.Protocol.S_ZoneEntered> Pack(FlatBufferBuilder builder, S_ZoneEnteredT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.S_ZoneEntered>);
+    var _my_player = _o.MyPlayer == null ? default(Offset<CppMMO.Protocol.PlayerInfo>) : CppMMO.Protocol.PlayerInfo.Pack(builder, _o.MyPlayer);
+    var _other_players = default(VectorOffset);
+    if (_o.OtherPlayers != null) {
+      var __other_players = new Offset<CppMMO.Protocol.PlayerInfo>[_o.OtherPlayers.Count];
+      for (var _j = 0; _j < __other_players.Length; ++_j) { __other_players[_j] = CppMMO.Protocol.PlayerInfo.Pack(builder, _o.OtherPlayers[_j]); }
+      _other_players = CreateOtherPlayersVector(builder, __other_players);
+    }
+    return CreateS_ZoneEntered(
+      builder,
+      _o.ZoneId,
+      _my_player,
+      _other_players);
+  }
+}
+
+public class S_ZoneEnteredT
+{
+  public int ZoneId { get; set; }
+  public CppMMO.Protocol.PlayerInfoT MyPlayer { get; set; }
+  public List<CppMMO.Protocol.PlayerInfoT> OtherPlayers { get; set; }
+
+  public S_ZoneEnteredT() {
+    this.ZoneId = 0;
+    this.MyPlayer = null;
+    this.OtherPlayers = null;
+  }
 }
 
 

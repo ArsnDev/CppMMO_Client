@@ -58,6 +58,87 @@ public struct UnifiedPacket : IFlatbufferObject
   }
   public static void FinishUnifiedPacketBuffer(FlatBufferBuilder builder, Offset<CppMMO.Protocol.UnifiedPacket> offset) { builder.Finish(offset.Value); }
   public static void FinishSizePrefixedUnifiedPacketBuffer(FlatBufferBuilder builder, Offset<CppMMO.Protocol.UnifiedPacket> offset) { builder.FinishSizePrefixed(offset.Value); }
+  public UnifiedPacketT UnPack() {
+    var _o = new UnifiedPacketT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(UnifiedPacketT _o) {
+    _o.Id = this.Id;
+    _o.Data = new CppMMO.Protocol.PacketUnion();
+    _o.Data.Type = this.DataType;
+    switch (this.DataType) {
+      default: break;
+      case CppMMO.Protocol.Packet.C_Login:
+        _o.Data.Value = this.Data<CppMMO.Protocol.C_Login>().HasValue ? this.Data<CppMMO.Protocol.C_Login>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_LoginSuccess:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_LoginSuccess>().HasValue ? this.Data<CppMMO.Protocol.S_LoginSuccess>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_LoginFailure:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_LoginFailure>().HasValue ? this.Data<CppMMO.Protocol.S_LoginFailure>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.C_Chat:
+        _o.Data.Value = this.Data<CppMMO.Protocol.C_Chat>().HasValue ? this.Data<CppMMO.Protocol.C_Chat>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_Chat:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_Chat>().HasValue ? this.Data<CppMMO.Protocol.S_Chat>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.C_PlayerInput:
+        _o.Data.Value = this.Data<CppMMO.Protocol.C_PlayerInput>().HasValue ? this.Data<CppMMO.Protocol.C_PlayerInput>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_WorldSnapshot:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_WorldSnapshot>().HasValue ? this.Data<CppMMO.Protocol.S_WorldSnapshot>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_StateCorrection:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_StateCorrection>().HasValue ? this.Data<CppMMO.Protocol.S_StateCorrection>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_GameTick:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_GameTick>().HasValue ? this.Data<CppMMO.Protocol.S_GameTick>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.C_EnterZone:
+        _o.Data.Value = this.Data<CppMMO.Protocol.C_EnterZone>().HasValue ? this.Data<CppMMO.Protocol.C_EnterZone>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_ZoneEntered:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_ZoneEntered>().HasValue ? this.Data<CppMMO.Protocol.S_ZoneEntered>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_PlayerJoined:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_PlayerJoined>().HasValue ? this.Data<CppMMO.Protocol.S_PlayerJoined>().Value.UnPack() : null;
+        break;
+      case CppMMO.Protocol.Packet.S_PlayerLeft:
+        _o.Data.Value = this.Data<CppMMO.Protocol.S_PlayerLeft>().HasValue ? this.Data<CppMMO.Protocol.S_PlayerLeft>().Value.UnPack() : null;
+        break;
+    }
+  }
+  public static Offset<CppMMO.Protocol.UnifiedPacket> Pack(FlatBufferBuilder builder, UnifiedPacketT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.UnifiedPacket>);
+    var _data_type = _o.Data == null ? CppMMO.Protocol.Packet.NONE : _o.Data.Type;
+    var _data = _o.Data == null ? 0 : CppMMO.Protocol.PacketUnion.Pack(builder, _o.Data);
+    return CreateUnifiedPacket(
+      builder,
+      _o.Id,
+      _data_type,
+      _data);
+  }
+}
+
+public class UnifiedPacketT
+{
+  public CppMMO.Protocol.PacketId Id { get; set; }
+  public CppMMO.Protocol.PacketUnion Data { get; set; }
+
+  public UnifiedPacketT() {
+    this.Id = CppMMO.Protocol.PacketId.NONE;
+    this.Data = null;
+  }
+  public static UnifiedPacketT DeserializeFromBinary(byte[] fbBuffer) {
+    return UnifiedPacket.GetRootAsUnifiedPacket(new ByteBuffer(fbBuffer)).UnPack();
+  }
+  public byte[] SerializeToBinary() {
+    var fbb = new FlatBufferBuilder(0x10000);
+    UnifiedPacket.FinishUnifiedPacketBuffer(fbb, UnifiedPacket.Pack(fbb, this));
+    return fbb.DataBuffer.ToSizedArray();
+  }
 }
 
 

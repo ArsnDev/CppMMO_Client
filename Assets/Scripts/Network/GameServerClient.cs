@@ -167,14 +167,14 @@ namespace SimpleMMO.Network
             SendPacket(packet);
         }
 
-        public void SendPlayerInput(byte inputFlags, Vector3 mousePosition)
+        public void SendPlayerInput(byte inputFlags, Vector3 mousePosition, Vector3 predictedPosition = default)
         {
             try
             {
                 uint currentSeq = (uint)Interlocked.Increment(ref sequenceNumber);
                 
                 // PacketExtensions 사용 (올바른 FlatBuffers 생성)
-                byte[] packetData = PacketExtensions.CreatePlayerInputPacket(inputFlags, mousePosition, currentSeq);
+                byte[] packetData = PacketExtensions.CreatePlayerInputPacket(inputFlags, mousePosition, currentSeq, predictedPosition);
                 
                 Debug.LogWarning($"PacketExtensions packet created: {packetData.Length} bytes, seq={currentSeq}");
                 Debug.LogError($"About to send - Connected: {_client.Connected}, Stream: {_stream != null}");
@@ -185,6 +185,12 @@ namespace SimpleMMO.Network
             {
                 Debug.LogError($"Error in PacketExtensions packet creation: {ex.Message}\n{ex.StackTrace}");
             }
+        }
+
+        // Backward compatibility method
+        public void SendPlayerInput(byte inputFlags)
+        {
+            SendPlayerInput(inputFlags, Vector3.zero, Vector3.zero);
         }
 
         public void SendChat(string message)

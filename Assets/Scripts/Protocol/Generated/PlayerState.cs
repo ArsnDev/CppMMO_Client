@@ -58,6 +58,55 @@ public struct PlayerState : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.PlayerState>(o);
   }
+  public PlayerStateT UnPack() {
+    var _o = new PlayerStateT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(PlayerStateT _o) {
+    _o.PlayerId = this.PlayerId;
+    _o.Position = this.Position.HasValue ? this.Position.Value.UnPack() : null;
+    _o.Velocity = this.Velocity.HasValue ? this.Velocity.Value.UnPack() : null;
+    _o.Rotation = this.Rotation;
+    _o.Hp = this.Hp;
+    _o.Mp = this.Mp;
+    _o.LastInputSequence = this.LastInputSequence;
+  }
+  public static Offset<CppMMO.Protocol.PlayerState> Pack(FlatBufferBuilder builder, PlayerStateT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.PlayerState>);
+    var _position = _o.Position == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.Position);
+    var _velocity = _o.Velocity == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.Velocity);
+    return CreatePlayerState(
+      builder,
+      _o.PlayerId,
+      _position,
+      _velocity,
+      _o.Rotation,
+      _o.Hp,
+      _o.Mp,
+      _o.LastInputSequence);
+  }
+}
+
+public class PlayerStateT
+{
+  public ulong PlayerId { get; set; }
+  public CppMMO.Protocol.Vec3T Position { get; set; }
+  public CppMMO.Protocol.Vec3T Velocity { get; set; }
+  public float Rotation { get; set; }
+  public int Hp { get; set; }
+  public int Mp { get; set; }
+  public uint LastInputSequence { get; set; }
+
+  public PlayerStateT() {
+    this.PlayerId = 0;
+    this.Position = null;
+    this.Velocity = null;
+    this.Rotation = 0.0f;
+    this.Hp = 0;
+    this.Mp = 0;
+    this.LastInputSequence = 0;
+  }
 }
 
 

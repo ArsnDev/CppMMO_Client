@@ -38,6 +38,33 @@ public struct C_EnterZone : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.C_EnterZone>(o);
   }
+  public C_EnterZoneT UnPack() {
+    var _o = new C_EnterZoneT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(C_EnterZoneT _o) {
+    _o.ZoneId = this.ZoneId;
+    _o.CommandId = this.CommandId;
+  }
+  public static Offset<CppMMO.Protocol.C_EnterZone> Pack(FlatBufferBuilder builder, C_EnterZoneT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.C_EnterZone>);
+    return CreateC_EnterZone(
+      builder,
+      _o.ZoneId,
+      _o.CommandId);
+  }
+}
+
+public class C_EnterZoneT
+{
+  public int ZoneId { get; set; }
+  public long CommandId { get; set; }
+
+  public C_EnterZoneT() {
+    this.ZoneId = 0;
+    this.CommandId = 0;
+  }
 }
 
 

@@ -46,6 +46,43 @@ public struct S_StateCorrection : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.S_StateCorrection>(o);
   }
+  public S_StateCorrectionT UnPack() {
+    var _o = new S_StateCorrectionT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(S_StateCorrectionT _o) {
+    _o.TickNumber = this.TickNumber;
+    _o.CorrectedPosition = this.CorrectedPosition.HasValue ? this.CorrectedPosition.Value.UnPack() : null;
+    _o.CorrectedVelocity = this.CorrectedVelocity.HasValue ? this.CorrectedVelocity.Value.UnPack() : null;
+    _o.SequenceNumber = this.SequenceNumber;
+  }
+  public static Offset<CppMMO.Protocol.S_StateCorrection> Pack(FlatBufferBuilder builder, S_StateCorrectionT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.S_StateCorrection>);
+    var _corrected_position = _o.CorrectedPosition == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.CorrectedPosition);
+    var _corrected_velocity = _o.CorrectedVelocity == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.CorrectedVelocity);
+    return CreateS_StateCorrection(
+      builder,
+      _o.TickNumber,
+      _corrected_position,
+      _corrected_velocity,
+      _o.SequenceNumber);
+  }
+}
+
+public class S_StateCorrectionT
+{
+  public ulong TickNumber { get; set; }
+  public CppMMO.Protocol.Vec3T CorrectedPosition { get; set; }
+  public CppMMO.Protocol.Vec3T CorrectedVelocity { get; set; }
+  public uint SequenceNumber { get; set; }
+
+  public S_StateCorrectionT() {
+    this.TickNumber = 0;
+    this.CorrectedPosition = null;
+    this.CorrectedVelocity = null;
+    this.SequenceNumber = 0;
+  }
 }
 
 

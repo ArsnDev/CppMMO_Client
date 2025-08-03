@@ -65,7 +65,7 @@ namespace SimpleMMO.Managers
             {
                 gameClient.OnWorldSnapshot += OnWorldSnapshot;
                 isSubscribed = true;
-                LogDebug("Subscribed to WorldSnapshot events");
+                // LogDebug("Subscribed to WorldSnapshot events");
             }
             else if (gameClient == null)
             {
@@ -80,7 +80,7 @@ namespace SimpleMMO.Managers
             {
                 gameClient.OnWorldSnapshot -= OnWorldSnapshot;
                 isSubscribed = false;
-                LogDebug("Unsubscribed from WorldSnapshot events");
+                // LogDebug("Unsubscribed from WorldSnapshot events");
             }
         }
 
@@ -100,7 +100,7 @@ namespace SimpleMMO.Managers
             lastTickNumber = snapshot.TickNumber;
             lastSyncTime = Time.time;
 
-            LogDebug($"WorldSnapshot received: Tick {snapshot.TickNumber}, {snapshot.PlayerStatesLength} players");
+            // LogDebug($"WorldSnapshot received: Tick {snapshot.TickNumber}, {snapshot.PlayerStatesLength} players");
 
             SyncPlayerStates(snapshot);
 
@@ -115,21 +115,34 @@ namespace SimpleMMO.Managers
                 return;
             }
 
+            uint lastProcessedSequence = snapshot.LastProcessedSequenceNumber;
+
             for (int i = 0; i < snapshot.PlayerStatesLength; i++)
             {
                 var playerState = snapshot.PlayerStates(i);
                 if (playerState.HasValue)
                 {
-                    SyncPlayerState(playerState.Value);
+                    SyncPlayerState(playerState.Value, lastProcessedSequence);
                 }
             }
         }
 
-        private void SyncPlayerState(PlayerState playerState)
+        private void SyncPlayerState(PlayerState playerState, uint lastProcessedSequence = 0)
         {
             if (localPlayer != null && playerState.PlayerId == localPlayer.PlayerId)
             {
+                // 임시로 reconciliation 비활성화 - sequence 문제 해결 필요
                 SyncLocalPlayer(playerState);
+                
+                // TODO: sequence number 문제 해결 후 활성화
+                // if (lastProcessedSequence > 0)
+                // {
+                //     SyncLocalPlayerWithReconciliation(playerState, lastProcessedSequence);
+                // }
+                // else
+                // {
+                //     SyncLocalPlayer(playerState);
+                // }
             }
             else
             {
@@ -143,26 +156,33 @@ namespace SimpleMMO.Managers
             Vector3 serverPosition = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
             Vector3 serverVelocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
 
-            if (enablePositionInterpolation)
-            {
-                // Stop any previous interpolation to prevent conflicts
-                if (currentInterpolation != null)
-                {
-                    StopCoroutine(currentInterpolation);
-                }
-                
-                // Start smooth position interpolation
-                currentInterpolation = StartCoroutine(InterpolateToPosition(localPlayer, serverPosition));
-            }
-            else
-            {
-                localPlayer.UpdatePosition(serverPosition);
-            }
+            // 클라이언트 예측과 충돌 방지: interpolation 비활성화
+            localPlayer.UpdatePosition(serverPosition);
 
             localPlayer.UpdateVelocity(serverVelocity);
+            
+            // Update HP from server data
+            localPlayer.UpdateHp(playerState.Hp, playerState.Mp); // Note: using Mp as maxHp for now
 
-            LogDebug($"Local player synced: {serverPosition}, velocity: {serverVelocity}");
+            LogDebug($"Local player synced: {serverPosition}, velocity: {serverVelocity}, HP: {playerState.Hp}");
         }
+        
+        // TODO: Future sequence-based reconciliation method
+        // private void SyncLocalPlayerWithReconciliation(PlayerState playerState, uint lastProcessedSequence)
+        // {
+        //     Vector3 serverPosition = playerState.Position?.ToUnityVector3() ?? Vector3.zero;
+        //     Vector3 serverVelocity = playerState.Velocity?.ToUnityVector3() ?? Vector3.zero;
+        //
+        //     // Perform sequence-based reconciliation
+        //     localPlayer.PerformReconciliation(serverPosition, lastProcessedSequence);
+        //
+        //     localPlayer.UpdateVelocity(serverVelocity);
+        //     
+        //     // Update HP from server data
+        //     localPlayer.UpdateHp(playerState.Hp, playerState.Mp);
+        //
+        //     LogDebug($"Local player reconciled: {serverPosition}, sequence: {lastProcessedSequence}, HP: {playerState.Hp}");
+        // }
 
         private void SyncRemotePlayer(PlayerState playerState)
         {
@@ -224,32 +244,13 @@ namespace SimpleMMO.Managers
         {
             switch (gameEvent.EventType)
             {
-                case CppMMO.Protocol.EventType.PLAYER_DAMAGE:
-                    LogDebug($"Player damage event: Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}, Value={gameEvent.Value}");
-                    // TODO: Process damage effects
-                    break;
-
-                case CppMMO.Protocol.EventType.PLAYER_HEAL:
-                    LogDebug($"Player heal event: Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}, Value={gameEvent.Value}");
-                    // TODO: Process heal effects
-                    break;
-
-                case CppMMO.Protocol.EventType.PLAYER_DEATH:
-                    LogDebug($"Player death event: Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}");
-                    // TODO: Process death effects
-                    break;
-
-                case CppMMO.Protocol.EventType.PLAYER_RESPAWN:
-                    LogDebug($"Player respawn event: PlayerId={gameEvent.SourcePlayerId}, Position={gameEvent.Position?.ToUnityVector3()}");
-                    // TODO: Process respawn effects
-                    break;
-
                 case CppMMO.Protocol.EventType.NONE:
                 default:
                     LogDebug($"Event type: {gameEvent.EventType}, Source={gameEvent.SourcePlayerId}, Target={gameEvent.TargetPlayerId}");
                     break;
             }
         }
+
 
         private void LogDebug(string message)
         {

@@ -91,67 +91,12 @@ public class GameFlowManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads the main gameplay scene and initiates connection to the game server.
-    /// Sets up callback to handle post-loading game server connection and authentication.
+    /// Loads the main gameplay scene.
+    /// InGameManager will handle the game server connection and authentication.
     /// </summary>
     public void LoadGameScene()
     {
         SceneManager.LoadScene("GamePlayScene");
-        
-        // Connect to game server and login after scene loads
-        SceneManager.sceneLoaded += OnGameSceneLoaded;
-    }
-    
-    /// <summary>
-    /// Callback triggered when a scene finishes loading.
-    /// Initiates game server connection when the GamePlayScene is loaded.
-    /// </summary>
-    /// <param name="scene">The loaded scene</param>
-    /// <param name="mode">The scene loading mode</param>
-    private void OnGameSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        if (scene.name == "GamePlayScene")
-        {
-            SceneManager.sceneLoaded -= OnGameSceneLoaded;
-            StartCoroutine(ConnectToGameServerCoroutine());
-        }
-    }
-    
-    /// <summary>
-    /// Coroutine that handles the game server connection and authentication process.
-    /// Waits for GameServerClient initialization, connects to server, and sends login credentials.
-    /// </summary>
-    /// <returns>IEnumerator for coroutine execution</returns>
-    private System.Collections.IEnumerator ConnectToGameServerCoroutine()
-    {
-        // Wait briefly for GameServerClient initialization
-        yield return new UnityEngine.WaitForSeconds(0.5f);
-        
-        var gameServerClient = SimpleMMO.Network.GameServerClient.Instance;
-        if (gameServerClient != null)
-        {
-            // Connect to game server
-            gameServerClient.Connect();
-            
-            // Wait for connection to complete
-            yield return new UnityEngine.WaitForSeconds(1.0f);
-            
-            // Authenticate with session information
-            var sessionManager = SimpleMMO.Managers.SessionManager.Instance;
-            if (sessionManager != null && sessionManager.IsLoggedIn && sessionManager.HasSelectedCharacter)
-            {
-                Debug.Log($"🎮 [GameFlowManager] Attempting game server login: playerId={sessionManager.SelectedPlayerId}, sessionTicket={sessionManager.SessionTicket}");
-                gameServerClient.SendLogin(sessionManager.SessionTicket, sessionManager.SelectedPlayerId);
-            }
-            else
-            {
-                Debug.LogError("Game server login failed: Missing session information or no character selected");
-            }
-        }
-        else
-        {
-            Debug.LogError("Connection failed: GameServerClient not available");
-        }
     }
 
     /// <summary>

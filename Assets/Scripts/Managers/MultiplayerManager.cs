@@ -321,6 +321,12 @@ namespace SimpleMMO.Managers
             float rotationAngle = playerState.Rotation;
             
             UpdateRemotePlayer(playerState.PlayerId, position, velocity, rotationAngle);
+            
+            // Update HP for remote player
+            if (activePlayers.TryGetValue(playerState.PlayerId, out RemotePlayer remotePlayer))
+            {
+                remotePlayer.UpdateHp(playerState.Hp, playerState.Mp); // Note: using Mp as maxHp for now
+            }
         }
 
         /// <summary>

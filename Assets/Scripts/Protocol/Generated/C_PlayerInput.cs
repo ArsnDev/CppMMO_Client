@@ -25,6 +25,7 @@ public struct C_PlayerInput : IFlatbufferObject
   public CppMMO.Protocol.Vec3? MousePosition { get { int o = __p.__offset(10); return o != 0 ? (CppMMO.Protocol.Vec3?)(new CppMMO.Protocol.Vec3()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
   public uint SequenceNumber { get { int o = __p.__offset(12); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public long CommandId { get { int o = __p.__offset(14); return o != 0 ? __p.bb.GetLong(o + __p.bb_pos) : (long)0; } }
+  public CppMMO.Protocol.Vec3? PredictedPosition { get { int o = __p.__offset(16); return o != 0 ? (CppMMO.Protocol.Vec3?)(new CppMMO.Protocol.Vec3()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<CppMMO.Protocol.C_PlayerInput> CreateC_PlayerInput(FlatBufferBuilder builder,
       ulong tick_number = 0,
@@ -32,27 +33,79 @@ public struct C_PlayerInput : IFlatbufferObject
       byte input_flags = 0,
       Offset<CppMMO.Protocol.Vec3> mouse_positionOffset = default(Offset<CppMMO.Protocol.Vec3>),
       uint sequence_number = 0,
-      long command_id = 0) {
-    builder.StartTable(6);
+      long command_id = 0,
+      Offset<CppMMO.Protocol.Vec3> predicted_positionOffset = default(Offset<CppMMO.Protocol.Vec3>)) {
+    builder.StartTable(7);
     C_PlayerInput.AddCommandId(builder, command_id);
     C_PlayerInput.AddClientTime(builder, client_time);
     C_PlayerInput.AddTickNumber(builder, tick_number);
+    C_PlayerInput.AddPredictedPosition(builder, predicted_positionOffset);
     C_PlayerInput.AddSequenceNumber(builder, sequence_number);
     C_PlayerInput.AddMousePosition(builder, mouse_positionOffset);
     C_PlayerInput.AddInputFlags(builder, input_flags);
     return C_PlayerInput.EndC_PlayerInput(builder);
   }
 
-  public static void StartC_PlayerInput(FlatBufferBuilder builder) { builder.StartTable(6); }
+  public static void StartC_PlayerInput(FlatBufferBuilder builder) { builder.StartTable(7); }
   public static void AddTickNumber(FlatBufferBuilder builder, ulong tickNumber) { builder.AddUlong(0, tickNumber, 0); }
   public static void AddClientTime(FlatBufferBuilder builder, ulong clientTime) { builder.AddUlong(1, clientTime, 0); }
   public static void AddInputFlags(FlatBufferBuilder builder, byte inputFlags) { builder.AddByte(2, inputFlags, 0); }
   public static void AddMousePosition(FlatBufferBuilder builder, Offset<CppMMO.Protocol.Vec3> mousePositionOffset) { builder.AddOffset(3, mousePositionOffset.Value, 0); }
   public static void AddSequenceNumber(FlatBufferBuilder builder, uint sequenceNumber) { builder.AddUint(4, sequenceNumber, 0); }
   public static void AddCommandId(FlatBufferBuilder builder, long commandId) { builder.AddLong(5, commandId, 0); }
+  public static void AddPredictedPosition(FlatBufferBuilder builder, Offset<CppMMO.Protocol.Vec3> predictedPositionOffset) { builder.AddOffset(6, predictedPositionOffset.Value, 0); }
   public static Offset<CppMMO.Protocol.C_PlayerInput> EndC_PlayerInput(FlatBufferBuilder builder) {
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.C_PlayerInput>(o);
+  }
+  public C_PlayerInputT UnPack() {
+    var _o = new C_PlayerInputT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(C_PlayerInputT _o) {
+    _o.TickNumber = this.TickNumber;
+    _o.ClientTime = this.ClientTime;
+    _o.InputFlags = this.InputFlags;
+    _o.MousePosition = this.MousePosition.HasValue ? this.MousePosition.Value.UnPack() : null;
+    _o.SequenceNumber = this.SequenceNumber;
+    _o.CommandId = this.CommandId;
+    _o.PredictedPosition = this.PredictedPosition.HasValue ? this.PredictedPosition.Value.UnPack() : null;
+  }
+  public static Offset<CppMMO.Protocol.C_PlayerInput> Pack(FlatBufferBuilder builder, C_PlayerInputT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.C_PlayerInput>);
+    var _mouse_position = _o.MousePosition == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.MousePosition);
+    var _predicted_position = _o.PredictedPosition == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.PredictedPosition);
+    return CreateC_PlayerInput(
+      builder,
+      _o.TickNumber,
+      _o.ClientTime,
+      _o.InputFlags,
+      _mouse_position,
+      _o.SequenceNumber,
+      _o.CommandId,
+      _predicted_position);
+  }
+}
+
+public class C_PlayerInputT
+{
+  public ulong TickNumber { get; set; }
+  public ulong ClientTime { get; set; }
+  public byte InputFlags { get; set; }
+  public CppMMO.Protocol.Vec3T MousePosition { get; set; }
+  public uint SequenceNumber { get; set; }
+  public long CommandId { get; set; }
+  public CppMMO.Protocol.Vec3T PredictedPosition { get; set; }
+
+  public C_PlayerInputT() {
+    this.TickNumber = 0;
+    this.ClientTime = 0;
+    this.InputFlags = 0;
+    this.MousePosition = null;
+    this.SequenceNumber = 0;
+    this.CommandId = 0;
+    this.PredictedPosition = null;
   }
 }
 
@@ -68,6 +121,7 @@ static public class C_PlayerInputVerify
       && verifier.VerifyTable(tablePos, 10 /*MousePosition*/, CppMMO.Protocol.Vec3Verify.Verify, false)
       && verifier.VerifyField(tablePos, 12 /*SequenceNumber*/, 4 /*uint*/, 4, false)
       && verifier.VerifyField(tablePos, 14 /*CommandId*/, 8 /*long*/, 8, false)
+      && verifier.VerifyTable(tablePos, 16 /*PredictedPosition*/, CppMMO.Protocol.Vec3Verify.Verify, false)
       && verifier.VerifyTableEnd(tablePos);
   }
 }

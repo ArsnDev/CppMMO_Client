@@ -34,6 +34,29 @@ public struct S_PlayerLeft : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.S_PlayerLeft>(o);
   }
+  public S_PlayerLeftT UnPack() {
+    var _o = new S_PlayerLeftT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(S_PlayerLeftT _o) {
+    _o.PlayerId = this.PlayerId;
+  }
+  public static Offset<CppMMO.Protocol.S_PlayerLeft> Pack(FlatBufferBuilder builder, S_PlayerLeftT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.S_PlayerLeft>);
+    return CreateS_PlayerLeft(
+      builder,
+      _o.PlayerId);
+  }
+}
+
+public class S_PlayerLeftT
+{
+  public ulong PlayerId { get; set; }
+
+  public S_PlayerLeftT() {
+    this.PlayerId = 0;
+  }
 }
 
 

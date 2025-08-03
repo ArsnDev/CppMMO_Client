@@ -50,6 +50,46 @@ public struct GameEvent : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.GameEvent>(o);
   }
+  public GameEventT UnPack() {
+    var _o = new GameEventT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(GameEventT _o) {
+    _o.EventType = this.EventType;
+    _o.SourcePlayerId = this.SourcePlayerId;
+    _o.TargetPlayerId = this.TargetPlayerId;
+    _o.Position = this.Position.HasValue ? this.Position.Value.UnPack() : null;
+    _o.Value = this.Value;
+  }
+  public static Offset<CppMMO.Protocol.GameEvent> Pack(FlatBufferBuilder builder, GameEventT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.GameEvent>);
+    var _position = _o.Position == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.Position);
+    return CreateGameEvent(
+      builder,
+      _o.EventType,
+      _o.SourcePlayerId,
+      _o.TargetPlayerId,
+      _position,
+      _o.Value);
+  }
+}
+
+public class GameEventT
+{
+  public CppMMO.Protocol.EventType EventType { get; set; }
+  public ulong SourcePlayerId { get; set; }
+  public ulong TargetPlayerId { get; set; }
+  public CppMMO.Protocol.Vec3T Position { get; set; }
+  public int Value { get; set; }
+
+  public GameEventT() {
+    this.EventType = CppMMO.Protocol.EventType.NONE;
+    this.SourcePlayerId = 0;
+    this.TargetPlayerId = 0;
+    this.Position = null;
+    this.Value = 0;
+  }
 }
 
 

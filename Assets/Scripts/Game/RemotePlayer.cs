@@ -12,6 +12,7 @@ namespace SimpleMMO.Game
         [Header("Visual Components")]
         public SpriteRenderer spriteRenderer;
         public TMPro.TextMeshPro nameText;
+        public TMPro.TextMeshPro hpText;
         
         [Header("Animation")]
         public Sprite[] idleSprites;
@@ -31,6 +32,16 @@ namespace SimpleMMO.Game
         /// Display name of the remote player character.
         /// </summary>
         public string PlayerName { get; private set; }
+        
+        /// <summary>
+        /// Current health points of the remote player.
+        /// </summary>
+        public int CurrentHp { get; private set; } = 100;
+        
+        /// <summary>
+        /// Maximum health points of the remote player.
+        /// </summary>
+        public int MaxHp { get; private set; } = 100;
         
         // Position interpolation
         private Vector3 targetPosition;
@@ -291,6 +302,44 @@ namespace SimpleMMO.Game
             if (spriteRenderer != null)
             {
                 spriteRenderer.color = new Color(spriteRenderer.color.r, spriteRenderer.color.g, spriteRenderer.color.b, 0.5f);
+            }
+        }
+
+        /// <summary>
+        /// Updates the remote player's health points and refreshes HP display.
+        /// </summary>
+        /// <param name="currentHp">Current health points</param>
+        /// <param name="maxHp">Maximum health points</param>
+        public void UpdateHp(int currentHp, int maxHp)
+        {
+            CurrentHp = UnityEngine.Mathf.Clamp(currentHp, 0, maxHp);
+            MaxHp = maxHp;
+            UpdateHpDisplay();
+        }
+
+        /// <summary>
+        /// Updates the HP display text.
+        /// </summary>
+        private void UpdateHpDisplay()
+        {
+            if (hpText != null)
+            {
+                hpText.text = $"HP: {CurrentHp}/{MaxHp}";
+                
+                // Change color based on HP percentage
+                float hpPercentage = (float)CurrentHp / MaxHp;
+                if (hpPercentage > 0.6f)
+                {
+                    hpText.color = UnityEngine.Color.green;
+                }
+                else if (hpPercentage > 0.3f)
+                {
+                    hpText.color = UnityEngine.Color.yellow;
+                }
+                else
+                {
+                    hpText.color = UnityEngine.Color.red;
+                }
             }
         }
 

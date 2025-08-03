@@ -39,24 +39,29 @@ namespace SimpleMMO.Protocol.Extensions
         }
 
         /// <summary>
-        /// C_PlayerInput 패킷 생성
+        /// C_PlayerInput 패킷 생성 (predicted position 포함)
         /// </summary>
-        public static byte[] CreatePlayerInputPacket(byte inputFlags, Vector3 mousePosition, uint sequenceNumber)
+        public static byte[] CreatePlayerInputPacket(byte inputFlags, Vector3 mousePosition, uint sequenceNumber, Vector3 predictedPosition = default)
         {
             try
             {
                 var builder = new FlatBufferBuilder(256);
                 
-                // 임시로 하드코딩된 값 사용
-                var mouseVec3 = Vec3.CreateVec3(builder, 0f, 0f, 0f);
+                // 마우스 위치 Vec3 생성
+                var mouseVec3 = Vec3.CreateVec3(builder, mousePosition.x, mousePosition.y, mousePosition.z);
+                
+                // 예측 위치 Vec3 생성
+                var predictedVec3 = Vec3.CreateVec3(builder, predictedPosition.x, predictedPosition.y, predictedPosition.z);
+                
                 var inputPacket = C_PlayerInput.CreateC_PlayerInput(
                     builder,
-                    1000UL, // 하드코딩된 틱
-                    2000UL, // 하드코딩된 시간
+                    GetCurrentTick(),
+                    GetCurrentClientTime(),
                     inputFlags,
                     mouseVec3,
                     sequenceNumber,
-                    0
+                    0,
+                    predictedVec3
                 );
                 
                 var unifiedPacket = UnifiedPacket.CreateUnifiedPacket(
@@ -70,6 +75,14 @@ namespace SimpleMMO.Protocol.Extensions
                 Debug.LogError($"Exception in CreatePlayerInputPacket: {ex.Message}\n{ex.StackTrace}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// C_PlayerInput 패킷 생성 (backward compatibility)
+        /// </summary>
+        public static byte[] CreatePlayerInputPacket(byte inputFlags, Vector3 mousePosition, uint sequenceNumber)
+        {
+            return CreatePlayerInputPacket(inputFlags, mousePosition, sequenceNumber, Vector3.zero);
         }
 
         /// <summary>

@@ -48,6 +48,38 @@ public struct C_Login : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.C_Login>(o);
   }
+  public C_LoginT UnPack() {
+    var _o = new C_LoginT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(C_LoginT _o) {
+    _o.SessionTicket = this.SessionTicket;
+    _o.PlayerId = this.PlayerId;
+    _o.CommandId = this.CommandId;
+  }
+  public static Offset<CppMMO.Protocol.C_Login> Pack(FlatBufferBuilder builder, C_LoginT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.C_Login>);
+    var _session_ticket = _o.SessionTicket == null ? default(StringOffset) : builder.CreateString(_o.SessionTicket);
+    return CreateC_Login(
+      builder,
+      _session_ticket,
+      _o.PlayerId,
+      _o.CommandId);
+  }
+}
+
+public class C_LoginT
+{
+  public string SessionTicket { get; set; }
+  public ulong PlayerId { get; set; }
+  public long CommandId { get; set; }
+
+  public C_LoginT() {
+    this.SessionTicket = null;
+    this.PlayerId = 0;
+    this.CommandId = 0;
+  }
 }
 
 

@@ -34,6 +34,30 @@ public struct S_GameTick : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.S_GameTick>(o);
   }
+  public S_GameTickT UnPack() {
+    var _o = new S_GameTickT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(S_GameTickT _o) {
+    _o.TickInfo = this.TickInfo.HasValue ? this.TickInfo.Value.UnPack() : null;
+  }
+  public static Offset<CppMMO.Protocol.S_GameTick> Pack(FlatBufferBuilder builder, S_GameTickT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.S_GameTick>);
+    var _tick_info = _o.TickInfo == null ? default(Offset<CppMMO.Protocol.GameTick>) : CppMMO.Protocol.GameTick.Pack(builder, _o.TickInfo);
+    return CreateS_GameTick(
+      builder,
+      _tick_info);
+  }
+}
+
+public class S_GameTickT
+{
+  public CppMMO.Protocol.GameTickT TickInfo { get; set; }
+
+  public S_GameTickT() {
+    this.TickInfo = null;
+  }
 }
 
 

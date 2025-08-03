@@ -4,10 +4,10 @@
         "height": 200.0
     },
     "gameplay": {
-        "chat_range": 50.0,
-        "aoi_range": 100.0,
+        "chat_range": 25.0,
+        "aoi_range": 30.0,
         "move_speed": 5.0,
-        "tick_rate": 60
+        "tick_rate": 30
     },
     "network": {
         "snapshot_rate": 60,

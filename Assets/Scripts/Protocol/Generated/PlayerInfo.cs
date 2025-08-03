@@ -64,6 +64,55 @@ public struct PlayerInfo : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.PlayerInfo>(o);
   }
+  public PlayerInfoT UnPack() {
+    var _o = new PlayerInfoT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(PlayerInfoT _o) {
+    _o.PlayerId = this.PlayerId;
+    _o.Name = this.Name;
+    _o.Position = this.Position.HasValue ? this.Position.Value.UnPack() : null;
+    _o.Hp = this.Hp;
+    _o.MaxHp = this.MaxHp;
+    _o.Mp = this.Mp;
+    _o.MaxMp = this.MaxMp;
+  }
+  public static Offset<CppMMO.Protocol.PlayerInfo> Pack(FlatBufferBuilder builder, PlayerInfoT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.PlayerInfo>);
+    var _name = _o.Name == null ? default(StringOffset) : builder.CreateString(_o.Name);
+    var _position = _o.Position == null ? default(Offset<CppMMO.Protocol.Vec3>) : CppMMO.Protocol.Vec3.Pack(builder, _o.Position);
+    return CreatePlayerInfo(
+      builder,
+      _o.PlayerId,
+      _name,
+      _position,
+      _o.Hp,
+      _o.MaxHp,
+      _o.Mp,
+      _o.MaxMp);
+  }
+}
+
+public class PlayerInfoT
+{
+  public ulong PlayerId { get; set; }
+  public string Name { get; set; }
+  public CppMMO.Protocol.Vec3T Position { get; set; }
+  public int Hp { get; set; }
+  public int MaxHp { get; set; }
+  public int Mp { get; set; }
+  public int MaxMp { get; set; }
+
+  public PlayerInfoT() {
+    this.PlayerId = 0;
+    this.Name = null;
+    this.Position = null;
+    this.Hp = 0;
+    this.MaxHp = 0;
+    this.Mp = 0;
+    this.MaxMp = 0;
+  }
 }
 
 

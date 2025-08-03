@@ -34,6 +34,30 @@ public struct S_PlayerJoined : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.S_PlayerJoined>(o);
   }
+  public S_PlayerJoinedT UnPack() {
+    var _o = new S_PlayerJoinedT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(S_PlayerJoinedT _o) {
+    _o.PlayerInfo = this.PlayerInfo.HasValue ? this.PlayerInfo.Value.UnPack() : null;
+  }
+  public static Offset<CppMMO.Protocol.S_PlayerJoined> Pack(FlatBufferBuilder builder, S_PlayerJoinedT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.S_PlayerJoined>);
+    var _player_info = _o.PlayerInfo == null ? default(Offset<CppMMO.Protocol.PlayerInfo>) : CppMMO.Protocol.PlayerInfo.Pack(builder, _o.PlayerInfo);
+    return CreateS_PlayerJoined(
+      builder,
+      _player_info);
+  }
+}
+
+public class S_PlayerJoinedT
+{
+  public CppMMO.Protocol.PlayerInfoT PlayerInfo { get; set; }
+
+  public S_PlayerJoinedT() {
+    this.PlayerInfo = null;
+  }
 }
 
 

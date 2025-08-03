@@ -38,6 +38,33 @@ public struct GameTick : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<CppMMO.Protocol.GameTick>(o);
   }
+  public GameTickT UnPack() {
+    var _o = new GameTickT();
+    this.UnPackTo(_o);
+    return _o;
+  }
+  public void UnPackTo(GameTickT _o) {
+    _o.TickNumber = this.TickNumber;
+    _o.ServerTime = this.ServerTime;
+  }
+  public static Offset<CppMMO.Protocol.GameTick> Pack(FlatBufferBuilder builder, GameTickT _o) {
+    if (_o == null) return default(Offset<CppMMO.Protocol.GameTick>);
+    return CreateGameTick(
+      builder,
+      _o.TickNumber,
+      _o.ServerTime);
+  }
+}
+
+public class GameTickT
+{
+  public ulong TickNumber { get; set; }
+  public ulong ServerTime { get; set; }
+
+  public GameTickT() {
+    this.TickNumber = 0;
+    this.ServerTime = 0;
+  }
 }
 
 

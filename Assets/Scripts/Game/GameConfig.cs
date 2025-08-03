@@ -78,9 +78,9 @@ namespace SimpleMMO.Game
                 gameplay = new GameplayConfig 
                 { 
                     chat_range = 50f, 
-                    aoi_range = 100f, 
+                    aoi_range = 30f, 
                     move_speed = 5f, 
-                    tick_rate = 60 
+                    tick_rate = 30 
                 },
                 network = new NetworkConfig 
                 { 
