@@ -93,6 +93,13 @@ namespace SimpleMMO.Game
             {
                 predictedPosition = transform.position;
                 serverPosition = transform.position;
+                
+                // Initialize input history to avoid stale data
+                for (int i = 0; i < INPUT_HISTORY_SIZE; i++)
+                {
+                    inputHistory[i] = new InputRecord { sequenceNumber = 0 };
+                }
+                
                 Debug.Log($"ClientPrediction initialized for local player at {predictedPosition}");
             }
         }
@@ -130,17 +137,20 @@ namespace SimpleMMO.Game
         private Vector3 serverPosition;
         private bool hasServerPosition = false;
         
-        // TODO: Future sequence-based reconciliation
-        // private struct InputRecord
-        // {
-        //     public uint sequenceNumber;
-        //     public byte inputFlags;
-        //     public Vector3 position;
-        //     public float timestamp;
-        // }
-        // 
-        // private List<InputRecord> inputHistory = new List<InputRecord>();
-        // private const int MAX_INPUT_HISTORY = 60;
+        // Input History for Server Reconciliation
+        private struct InputRecord
+        {
+            public uint sequenceNumber;
+            public byte inputFlags;
+            public Vector3 positionBeforeInput;
+            public float timestamp;
+            public float deltaTime;
+        }
+        
+        private const int INPUT_HISTORY_SIZE = 60; // 3초분 (20Hz 기준)
+        private InputRecord[] inputHistory = new InputRecord[INPUT_HISTORY_SIZE];
+        private int historyHead = 0;
+        
 
         // Direction lookup table (same as server)
         private static readonly float SQRT2_HALF = Mathf.Sqrt(2f) / 2f;
@@ -171,32 +181,6 @@ namespace SimpleMMO.Game
             return DIRECTION_TABLE[inputFlags & 0x0F];
         }
         
-        // TODO: Future sequence-based reconciliation method
-        // private uint RecordInputHistory(byte inputFlags, Vector3 positionBeforeMovement)
-        // {
-        //     uint sequenceNum = 0;
-        //     if (GameServerClient.Instance != null)
-        //     {
-        //         sequenceNum = (uint)(GameServerClient.Instance.CurrentSequenceNumber + 1);
-        //     }
-        //     
-        //     InputRecord record = new InputRecord
-        //     {
-        //         sequenceNumber = sequenceNum,
-        //         inputFlags = inputFlags,
-        //         position = positionBeforeMovement,
-        //         timestamp = Time.time
-        //     };
-        //     
-        //     inputHistory.Add(record);
-        //     
-        //     if (inputHistory.Count > MAX_INPUT_HISTORY)
-        //     {
-        //         inputHistory.RemoveAt(0);
-        //     }
-        //     
-        //     return sequenceNum;
-        // }
 
         private void HandleInput()
         {
@@ -223,32 +207,42 @@ namespace SimpleMMO.Game
             // 애니메이션을 위한 이동 상태 업데이트
             isMoving = inputFlags != 0;
             
-            // Client-side prediction: 즉시 로컬 움직임
-            if (enableClientPrediction)
-            {
-                Vector3 direction = InputFlagsToDirection(inputFlags);
-                Vector3 movement = direction * predictionMoveSpeed * Time.deltaTime;
-                predictedPosition += movement;
-                transform.position = predictedPosition;
-            }
-            
             // 입력 상태가 변했거나 일정 시간이 지났을 때만 전송
             bool inputChanged = inputFlags != lastInputFlags;
             bool timeToSend = Time.time - lastInputSendTime >= inputSendInterval;
             
             if (inputFlags != 0 && (inputChanged || timeToSend))
             {
-                SendPlayerInput(inputFlags);
-                lastInputFlags = inputFlags;
-                lastInputSendTime = Time.time;
+                ProcessAndSendInput(inputFlags);
             }
             else if (inputFlags == 0 && lastInputFlags != 0)
             {
                 // Send immediately when movement keys are released
-                SendPlayerInput(inputFlags);
-                lastInputFlags = inputFlags;
-                lastInputSendTime = Time.time;
+                ProcessAndSendInput(inputFlags);
             }
+        }
+        
+        private void ProcessAndSendInput(byte inputFlags)
+        {
+            // Record position before applying input for reconciliation
+            Vector3 positionBeforeInput = enableClientPrediction ? predictedPosition : transform.position;
+            float currentDeltaTime = Time.deltaTime;
+            
+            // Client-side prediction: 즉시 로컬 움직임
+            if (enableClientPrediction)
+            {
+                Vector3 direction = InputFlagsToDirection(inputFlags);
+                Vector3 movement = direction * predictionMoveSpeed * currentDeltaTime;
+                predictedPosition += movement;
+                transform.position = predictedPosition;
+            }
+            
+            // Send input to server and record in history
+            uint sequenceNumber = SendPlayerInput(inputFlags);
+            RecordInput(sequenceNumber, inputFlags, positionBeforeInput, currentDeltaTime);
+            
+            lastInputFlags = inputFlags;
+            lastInputSendTime = Time.time;
         }
 
         /// <summary>
@@ -256,16 +250,135 @@ namespace SimpleMMO.Game
         /// Handles graceful fallback when the input manager is not available.
         /// </summary>
         /// <param name="inputFlags">Bit flags representing current input state</param>
-        private void SendPlayerInput(byte inputFlags)
+        /// <returns>Sequence number of the sent input</returns>
+        private uint SendPlayerInput(byte inputFlags)
         {
             if (SimpleMMO.Managers.PlayerInputManager.Instance != null)
             {
                 SimpleMMO.Managers.PlayerInputManager.Instance.SendInput(inputFlags);
+                // Get sequence number from GameServerClient
+                if (GameServerClient.Instance != null)
+                {
+                    return GameServerClient.Instance.CurrentSequenceNumber;
+                }
             }
             else
             {
                 Debug.LogWarning("PlayerController: PlayerInputManager not available, input dropped");
             }
+            return 0; // Invalid sequence number
+        }
+        
+        /// <summary>
+        /// Records input in the circular buffer for server reconciliation
+        /// </summary>
+        private void RecordInput(uint sequenceNumber, byte inputFlags, Vector3 positionBeforeInput, float deltaTime)
+        {
+            if (sequenceNumber == 0) return; // Invalid sequence
+            
+            // Record in circular buffer
+            inputHistory[historyHead] = new InputRecord
+            {
+                sequenceNumber = sequenceNumber,
+                inputFlags = inputFlags,
+                positionBeforeInput = positionBeforeInput,
+                timestamp = Time.time,
+                deltaTime = deltaTime
+            };
+            
+            // Move to next position in circular buffer
+            historyHead = (historyHead + 1) % INPUT_HISTORY_SIZE;
+            
+            Debug.Log($"Input recorded: seq={sequenceNumber}, flags={inputFlags:X2}, pos={positionBeforeInput}, dt={deltaTime:F4}");
+        }
+        
+        /// <summary>
+        /// Finds input record by sequence number for reconciliation
+        /// </summary>
+        private int FindInputBySequence(uint sequenceNumber)
+        {
+            for (int i = 0; i < INPUT_HISTORY_SIZE; i++)
+            {
+                if (inputHistory[i].sequenceNumber == sequenceNumber)
+                {
+                    return i;
+                }
+            }
+            return -1; // Not found
+        }
+        
+        /// <summary>
+        /// Gets all unprocessed inputs after the given sequence number
+        /// </summary>
+        private List<InputRecord> GetUnprocessedInputs(uint lastProcessedSequence)
+        {
+            List<InputRecord> unprocessed = new List<InputRecord>();
+            float currentTime = Time.time;
+            const float MAX_INPUT_AGE = 5.0f; // Discard inputs older than 5 seconds
+            
+            for (int i = 0; i < INPUT_HISTORY_SIZE; i++)
+            {
+                InputRecord record = inputHistory[i];
+                if (record.sequenceNumber > lastProcessedSequence && 
+                    record.sequenceNumber != 0 &&
+                    (currentTime - record.timestamp) < MAX_INPUT_AGE)
+                {
+                    unprocessed.Add(record);
+                }
+            }
+            
+            // Sort by sequence number to maintain order
+            unprocessed.Sort((a, b) => a.sequenceNumber.CompareTo(b.sequenceNumber));
+            return unprocessed;
+        }
+        
+        /// <summary>
+        /// Performs server reconciliation by replaying unprocessed inputs from server position
+        /// </summary>
+        /// <param name="serverPosition">Authoritative position from server</param>
+        /// <param name="lastProcessedSequence">Last sequence number processed by server</param>
+        public void PerformReconciliation(Vector3 serverPosition, uint lastProcessedSequence)
+        {
+            if (!isLocalPlayer || !enableClientPrediction)
+                return;
+                
+            // Check if reconciliation is needed
+            float distanceError = Vector3.Distance(serverPosition, predictedPosition);
+            const float RECONCILIATION_THRESHOLD = 0.5f; // 0.5 unit 차이부터 보정
+            
+            if (distanceError < RECONCILIATION_THRESHOLD)
+            {
+                // Small difference, just update server position for reference
+                this.serverPosition = serverPosition;
+                hasServerPosition = true;
+                return;
+            }
+            
+            Debug.Log($"Reconciliation needed: distance error = {distanceError:F3}, threshold = {RECONCILIATION_THRESHOLD}");
+            
+            // Get all unprocessed inputs after last processed sequence
+            List<InputRecord> unprocessedInputs = GetUnprocessedInputs(lastProcessedSequence);
+            
+            // Start from server's authoritative position
+            Vector3 correctedPosition = serverPosition;
+            
+            // Replay all unprocessed inputs
+            foreach (var input in unprocessedInputs)
+            {
+                Vector3 direction = InputFlagsToDirection(input.inputFlags);
+                Vector3 movement = direction * predictionMoveSpeed * input.deltaTime;
+                correctedPosition += movement;
+                
+                Debug.Log($"Replaying input seq={input.sequenceNumber}, flags={input.inputFlags:X2}, movement={movement}, dt={input.deltaTime:F4}");
+            }
+            
+            // Update positions
+            predictedPosition = correctedPosition;
+            this.serverPosition = serverPosition;
+            hasServerPosition = true;
+            transform.position = predictedPosition;
+            
+            Debug.Log($"Reconciliation complete: server={serverPosition}, corrected={correctedPosition}, replayed {unprocessedInputs.Count} inputs");
         }
         
         /// <summary>
@@ -352,48 +465,6 @@ namespace SimpleMMO.Game
             }
         }
         
-        // TODO: Future sequence-based reconciliation method
-        // public void PerformReconciliation(Vector3 serverPosition, uint lastProcessedSequence)
-        // {
-        //     if (!isLocalPlayer || !enableClientPrediction)
-        //         return;
-        //         
-        //     this.serverPosition = serverPosition;
-        //     hasServerPosition = true;
-        //     
-        //     // Find matching sequence and replay unprocessed inputs
-        //     int reconcileIndex = -1;
-        //     for (int i = 0; i < inputHistory.Count; i++)
-        //     {
-        //         if (inputHistory[i].sequenceNumber == lastProcessedSequence)
-        //         {
-        //             reconcileIndex = i;
-        //             break;
-        //         }
-        //     }
-        //     
-        //     if (reconcileIndex >= 0)
-        //     {
-        //         inputHistory.RemoveRange(0, reconcileIndex + 1);
-        //         
-        //         Vector3 correctedPosition = serverPosition;
-        //         foreach (var input in inputHistory)
-        //         {
-        //             Vector3 direction = InputFlagsToDirection(input.inputFlags);
-        //             Vector3 movement = direction * predictionMoveSpeed * Time.fixedDeltaTime;
-        //             correctedPosition += movement;
-        //         }
-        //         
-        //         predictedPosition = correctedPosition;
-        //         transform.position = predictedPosition;
-        //     }
-        //     else
-        //     {
-        //         predictedPosition = serverPosition;
-        //         transform.position = predictedPosition;
-        //         inputHistory.Clear();
-        //     }
-        // }
 
         /// <summary>
         /// Updates the player's velocity and movement state for animation purposes.
