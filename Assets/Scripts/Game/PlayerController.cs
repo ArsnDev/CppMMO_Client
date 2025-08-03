@@ -93,6 +93,13 @@ namespace SimpleMMO.Game
             {
                 predictedPosition = transform.position;
                 serverPosition = transform.position;
+                
+                // Initialize input history to avoid stale data
+                for (int i = 0; i < INPUT_HISTORY_SIZE; i++)
+                {
+                    inputHistory[i] = new InputRecord { sequenceNumber = 0 };
+                }
+                
                 Debug.Log($"ClientPrediction initialized for local player at {predictedPosition}");
             }
         }
@@ -137,12 +144,12 @@ namespace SimpleMMO.Game
             public byte inputFlags;
             public Vector3 positionBeforeInput;
             public float timestamp;
+            public float deltaTime;
         }
         
         private const int INPUT_HISTORY_SIZE = 60; // 3초분 (20Hz 기준)
         private InputRecord[] inputHistory = new InputRecord[INPUT_HISTORY_SIZE];
         private int historyHead = 0;
-        private uint oldestSequenceInHistory = 0;
         
 
         // Direction lookup table (same as server)
@@ -219,19 +226,20 @@ namespace SimpleMMO.Game
         {
             // Record position before applying input for reconciliation
             Vector3 positionBeforeInput = enableClientPrediction ? predictedPosition : transform.position;
+            float currentDeltaTime = Time.deltaTime;
             
             // Client-side prediction: 즉시 로컬 움직임
             if (enableClientPrediction)
             {
                 Vector3 direction = InputFlagsToDirection(inputFlags);
-                Vector3 movement = direction * predictionMoveSpeed * Time.deltaTime;
+                Vector3 movement = direction * predictionMoveSpeed * currentDeltaTime;
                 predictedPosition += movement;
                 transform.position = predictedPosition;
             }
             
             // Send input to server and record in history
             uint sequenceNumber = SendPlayerInput(inputFlags);
-            RecordInput(sequenceNumber, inputFlags, positionBeforeInput);
+            RecordInput(sequenceNumber, inputFlags, positionBeforeInput, currentDeltaTime);
             
             lastInputFlags = inputFlags;
             lastInputSendTime = Time.time;
@@ -264,7 +272,7 @@ namespace SimpleMMO.Game
         /// <summary>
         /// Records input in the circular buffer for server reconciliation
         /// </summary>
-        private void RecordInput(uint sequenceNumber, byte inputFlags, Vector3 positionBeforeInput)
+        private void RecordInput(uint sequenceNumber, byte inputFlags, Vector3 positionBeforeInput, float deltaTime)
         {
             if (sequenceNumber == 0) return; // Invalid sequence
             
@@ -274,19 +282,14 @@ namespace SimpleMMO.Game
                 sequenceNumber = sequenceNumber,
                 inputFlags = inputFlags,
                 positionBeforeInput = positionBeforeInput,
-                timestamp = Time.time
+                timestamp = Time.time,
+                deltaTime = deltaTime
             };
-            
-            // Update oldest sequence tracking
-            if (historyHead == 0 || sequenceNumber < oldestSequenceInHistory)
-            {
-                oldestSequenceInHistory = sequenceNumber;
-            }
             
             // Move to next position in circular buffer
             historyHead = (historyHead + 1) % INPUT_HISTORY_SIZE;
             
-            Debug.Log($"Input recorded: seq={sequenceNumber}, flags={inputFlags:X2}, pos={positionBeforeInput}");
+            Debug.Log($"Input recorded: seq={sequenceNumber}, flags={inputFlags:X2}, pos={positionBeforeInput}, dt={deltaTime:F4}");
         }
         
         /// <summary>
@@ -310,11 +313,15 @@ namespace SimpleMMO.Game
         private List<InputRecord> GetUnprocessedInputs(uint lastProcessedSequence)
         {
             List<InputRecord> unprocessed = new List<InputRecord>();
+            float currentTime = Time.time;
+            const float MAX_INPUT_AGE = 5.0f; // Discard inputs older than 5 seconds
             
             for (int i = 0; i < INPUT_HISTORY_SIZE; i++)
             {
                 InputRecord record = inputHistory[i];
-                if (record.sequenceNumber > lastProcessedSequence && record.sequenceNumber != 0)
+                if (record.sequenceNumber > lastProcessedSequence && 
+                    record.sequenceNumber != 0 &&
+                    (currentTime - record.timestamp) < MAX_INPUT_AGE)
                 {
                     unprocessed.Add(record);
                 }
@@ -359,10 +366,10 @@ namespace SimpleMMO.Game
             foreach (var input in unprocessedInputs)
             {
                 Vector3 direction = InputFlagsToDirection(input.inputFlags);
-                Vector3 movement = direction * predictionMoveSpeed * Time.fixedDeltaTime;
+                Vector3 movement = direction * predictionMoveSpeed * input.deltaTime;
                 correctedPosition += movement;
                 
-                Debug.Log($"Replaying input seq={input.sequenceNumber}, flags={input.inputFlags:X2}, movement={movement}");
+                Debug.Log($"Replaying input seq={input.sequenceNumber}, flags={input.inputFlags:X2}, movement={movement}, dt={input.deltaTime:F4}");
             }
             
             // Update positions
