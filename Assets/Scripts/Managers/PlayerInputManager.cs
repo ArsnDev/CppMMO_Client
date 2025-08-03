@@ -29,26 +29,27 @@ namespace SimpleMMO.Managers
         }
 
 
-        public void SendInput(byte inputFlags)
+        public uint SendInput(byte inputFlags)
         {
             // Check connection status
             if (GameServerClient.Instance == null)
             {
                 Debug.LogWarning("PlayerInputManager: GameServerClient not available");
-                return;
+                return 0;
             }
 
             // Check if connected
             if (!GameServerClient.Instance.IsConnected)
             {
                 Debug.LogWarning($"PlayerInputManager: GameServerClient not connected, dropping input 0x{inputFlags:X2}");
-                return;
+                return 0;
             }
             
             // Call directly as GameServerClient manages sequence numbers internally
-            GameServerClient.Instance.SendPlayerInput(inputFlags);
+            uint sequenceNumber = GameServerClient.Instance.SendPlayerInput(inputFlags);
             
-            Debug.Log($"Input sent: Flags=0x{inputFlags:X2}");
+            Debug.Log($"Input sent: Flags=0x{inputFlags:X2}, Sequence={sequenceNumber}");
+            return sequenceNumber;
         }
 
 
